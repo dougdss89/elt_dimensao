@@ -1,6 +1,6 @@
 -- dimestadoregiao
 
--- analisar a dimensão cliente e se ela possui algum campo que se ligue com as dimensões de território
+-- analisar a dimensï¿½o cliente e se ela possui algum campo que se ligue com as dimensï¿½es de territï¿½rio
 use AdventureWorks2019;
 go
 

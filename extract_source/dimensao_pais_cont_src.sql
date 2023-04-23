@@ -1,6 +1,4 @@
--- dimensão paiscontinente
-use AdventureWorks2019;
-go
+-- dimensao pais_continente
 select distinct
 sst.TerritoryID as countryregionid,
 sst.[Group] as regionzone,
@@ -29,7 +27,3 @@ on sst.CountryRegionCode = pcr.CountryRegionCode
 left join
 	Person.StateProvince as psp
 on pcr.CountryRegionCode = psp.CountryRegionCode;
-go
-
-
---select * from Sales.SalesTerritory;

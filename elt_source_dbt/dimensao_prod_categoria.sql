@@ -1,7 +1,7 @@
-use AdventureWorks2016;
+use AdventureWorks2019;
 go
 
--- dimensão procut_category
+-- dimencao procut_category
 
 with etl_prod_category as (
 
