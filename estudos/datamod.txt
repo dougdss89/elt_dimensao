@@ -1,0 +1,6 @@
+DATA MODIFICATION
+
+select into serve como cópia de dados de um banco para outro. Não replica estrutura física como index, constraints, triggers e permissions.
+
+sua vantagem é a otimização no insert, quando se precisa de log mínimo para uma determinada massa de dados.
+
