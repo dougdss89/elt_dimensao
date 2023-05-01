@@ -1,6 +1,7 @@
 -- dimestadoregiao
 
--- analisar a dimens�o cliente e se ela possui algum campo que se ligue com as dimens�es de territ�rio
+-- analisar a dimensao cliente e se ela possui algum campo que se ligue com as dimensoes de territorio
+-- essa dimensao eh constituida apenas dos territorios que possuem venda
 
 select
 	psp.TerritoryID,

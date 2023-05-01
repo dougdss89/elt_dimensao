@@ -10,5 +10,3 @@ select
     enddate
 
 from sales.SpecialOffer;
-
---select * from Sales.SpecialOffer;

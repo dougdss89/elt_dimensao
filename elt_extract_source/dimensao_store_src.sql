@@ -1,13 +1,12 @@
 select
-	st.businessentityid,
+	st.businessentityid as storeid,
 	sc.PersonID,
 	pp.businessentityid,
-	sc.CustomerID buyerid,
+	sc.CustomerID as buyerid,
 	sc.AccountNumber,
-	st.[Name],
+	st.[Name] as storename,
 	pp.FirstName,
     pp.LastName,
-	st.Demographics,
 	st.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey"; (/ns:StoreSurvey/ns:AnnualSales)[1]','numeric(12,2)') AS AnnualSales,
 	st.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey"; (/ns:StoreSurvey/ns:AnnualRevenue)[1]','numeric(12,2)') AS AnnualRevenue,
 	st.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey"; (/ns:StoreSurvey/ns:BankName)[1]','varchar(50)') AS BankName,
@@ -20,9 +19,8 @@ select
 	st.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey"; (/ns:StoreSurvey/ns:NumberEmployees)[1]','smallint') AS NumberEmployees,
 	SalesPersonID, 
 	sst.territoryid,
-	[group],
-    sst.CountryRegionCode,
-	sst.[name],
+	[group] continentname,
+	sst.[name] as regionname,
 	sst.CountryRegionCode
 from Sales.Store st
 left join

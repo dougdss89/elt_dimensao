@@ -14,15 +14,15 @@ select
     hreh.startdate,
     hreh.enddate,
     hrd.groupname,
-    hrd.[name],
+    hrd.[name] as departmentname,
     hreph.payfrequency,
     hreph.rate,
     hreph.ratechangedate,
     ssp.commissionpct,
     ssp.salesquota,
     ssp.bonus,
-    sst.[name],
-    sst.[group],
+    sst.[name] as regionname,
+    sst.[group] as continentname,
     sst.countryregioncode,
     sst.territoryid
 from person.person as pp

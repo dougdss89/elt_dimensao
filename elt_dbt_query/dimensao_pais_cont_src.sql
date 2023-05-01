@@ -1,8 +1,8 @@
 -- dimensao pais_continente
 select distinct
-sst.TerritoryID as countryregionid,
-sst.[Group] as regionzone,
-sst.CountryRegionCode as countrycode,
+sst.TerritoryID,
+sst.[Group],
+sst.CountryRegionCode,
 	case
 		when sst.CountryRegionCode = 'US' then 'United States'
 		when sst.CountryRegionCode = 'CA' then 'Canada'
