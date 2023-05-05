@@ -4,3 +4,55 @@ select into serve como cópia de dados de um banco para outro. Não replica estr
 
 sua vantagem é a otimização no insert, quando se precisa de log mínimo para uma determinada massa de dados.
 
+A forma de processamento com o SELECT INTO irá depender do modo em que o banco se enconta. Se ele estiver em recovery full, a operação será completamente logada.
+Caso esteja como bulk-logged ou simple, será mínimo. Porém, se o transaction replication estiver habilitado, será full logged.
+
+SELECT INTO aloca uma extent inteira (conjunto de 8 páginas de 8kb cada). Desse modo, ele apenas sinaliza para operações de undo.
+
+Caso queira utilizar a propriedade do identity na tabela, declare no select o nome da coluna, o datatype e o start e seed do identity. Necessário informar que 
+a ordem de inserção não é garantida, mesmo com order by - embora o banco consiga inserir na ordem.
+
+Normalmente o SELECT INTO tem suas operações otimizadas pelo engine do SQL Server. A operação é rapidamente limpada da memória para o disco, sem precisar esperar o final.
+Embora não pareça, esse flush da memória não é imediato, o que traz vantagens quando utilizamos com tabelas temporárias.
+
+Nesse caso, criamos, consultamos e deletamos de forma eficiente reduzindo a quantidade de I/O.
+
+O problema do SELECT INTO é que ele divide os recursos e causa um "shared lock" nas tabelas de sistema, já que precisa copiar os schemas da tabela fonte para a copia.
+Então, operações desse tipo em tabelas muito grandes precisam ser limitadas ou copiaram uma quantidade pequena de dados.
+
+-- talvez o dbt funcione assim, como um SELECT INTO da fonte para o destino.
+
+--------------- SEQUENCE X IDENTITY ---------------
+
+Existem duas formas de criar chaves, principalmente as SK's de DW no SQL Server: Sequences ou identity
+
+Sequences são objetos criados no SQL Server fora de qualquer propriedade de tabela ou coluna, diferente da Identity que é uma propriedade e além disso, é muito inflexível no manuseio.
+Identity cria uma sequencia numérica.
+
+Por ser uma propriedade preza na coluna, não é possível gerenciar entre outras tabelas, não sendo uma boa opção quando lidamos com surrogate keys.
+
+
+Colunas com identity não pode ser atualizadas via update.
+Não é possível dissociar ou associar a propriedade identity em uma coluna existente. Somente criando uma nova
+Não podemos gerar novas chaves com select. No select into, ela é informada na criação da tabela - sem ordem garantida
+Se ela atingir o número máximo permitido pelo datatype, por exemplo, tinyint. Se passar de 256, acusara erro de overflow, necessitando do dbcc checkidentity
+O incremento de uma identity não pode ser alterado
+Não é possível criar um cache de valores com identity
+Não permite alocar um range de valores para uma determinada coluna.
+
+Por outro lado, sequences são mais flexíveis por ser um objeto independente. Único problema de uma sequence é quanto ao datatype. Por padrão será bigint e caso deseje mudar, terá de recriar a sequence.
+
+Sequences permitem cache, range de valores e são cíclicas quando configuradas.
+
+Quando a sequence possui um valor de cache, esse valor é carregado na memória, o que evita escrita em disco sempre que utilizamos a sequence.
+Quanto maior o valor do cache, melhor a performance.
+
+Dependendo da coluna que vá ser incrementada pela sequence e até mesmo uma identity, restrinja com constraints de integridade.
+
+// talvez eu possa colocar o next value for no DBT para ele carregar as colunas com sequence no DW.
+// para isso, irei precisar de algumas sequences no banco para gerenciar essas cargas nas tabelas.
+// utilizar default constraint para carregar automaticamente
+// gerenciar via etl com o orquestrador do airflow essa step de 'gestão' da tabela nas cargas
+
+Graças ao OVER com ORDER BY, é possível preservar a sequencia da tabela fonte, ao mesmo tempo que gera uma sequencia nova com a sequence.
+
