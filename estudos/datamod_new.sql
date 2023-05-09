@@ -157,3 +157,189 @@ select * from dbo.myorders
 
 select * from Sales.Orders
 where empid = 2;
+
+--------------- DATA MANIPULATION: DELETE, TRUNCATE & UPDATE ---------------
+
+drop table if exists dbo.truncatetb;
+go
+
+select 
+    empid,
+    custid,
+    orderdate
+into dbo.truncatetb
+from sales.orders;
+go
+
+select * from dbo.truncatetb;
+go
+
+begin tran
+truncate table dbo.truncatetb
+
+rollback;
+go
+select * from dbo.truncatetb;
+go
+
+begin tran
+delete from dbo.truncatetb
+output
+    deleted.orderdate,
+    deleted.custid,
+    deleted.empid
+where orderdate > '20200101' and orderdate <= '20201231'
+
+rollback;
+
+select * from dbo.truncatetb
+where orderdate  <= '20201231'
+go
+
+-- resetando a propriedade do identity
+
+if object_id('dbo.testeid') is not null drop table dbo.testeid;
+GO
+create table dbo.testeid(
+
+    id int identity,
+    todaydt date default getdate(),
+    texto varchar(5)
+)
+go
+
+insert into dbo.testeid (texto)
+values ('aaaa');
+go 10
+
+select * from dbo.testeid;
+go
+
+-- ao final dess transação, o próximo insert deve começar com 4
+-- o que ela tá fazendo é armazenar o último valor do insert em uma variável e recomeçar a contagem daí
+if exists (select * from dbo.testeid)
+begin
+    begin tran
+        declare @tempval as int = (Select top(1) id from dbo.testeid with (tablockx));
+        declare @reseed as int = ident_current(N'dbo.testeid') +1;
+        truncate table dbo.testeid
+        dbcc checkident(N'dbo.testeid', reseed, @reseed);
+        print('identity reseed to ' + cast(@reseed as varchar(10)))
+
+    commit
+end
+else
+    print('table empty. No need to reseed')
+
+insert into dbo.testeid(texto)
+values ('bbb');
+go 10
+
+
+select * from dbo.testeid;
+go
+
+
+-- outra opção seria utilizar a funcao max retornando o maior valor da coluna id
+if exists(select * from dbo.testeid)
+begin
+    begin tran
+        declare @newid as int = (select top(1) id from dbo.testeid with (tablockx));
+        declare @reseed as int = (select max(id) from dbo.testeid) + 1;
+        truncate table dbo.testeid
+        dbcc checkident(N'dbo.testeid', reseed, @reseed);
+        print('identity reseed to ' + cast(@reseed as varchar(10)))
+    commit
+end
+else 
+    print('Table empty');
+GO
+insert into dbo.testeid(texto)
+values('ccc');
+go 5
+
+select * from dbo.testeid;
+GO
+         
+-- deletando linhas duplicadas.
+drop table if exists dbo.duptable;
+go
+
+select orderdate, orderid, empid, custid, freight
+into dbo.duptable
+from Sales.Orders
+    cross join
+        dbo.Nums
+where n <= 10000;
+go
+
+select * from dbo.duptable
+where orderid = 10248
+go
+
+-- delete mesmo aplicado me uma CTE deleta na tabela fonte.
+-- como a cte é apenas uma 'virtualização' da tabela original, o comando acaba atuando na original.
+-- por outro lado, abrir begin tran com cte acusa erro
+begin tran
+with delcte as (
+
+    select orderdate, orderid
+    from dbo.duptable
+    where orderdate <= '20201231'
+)
+
+delete delcte
+output
+    deleted. orderdate,
+    deleted.orderid
+
+
+-- delete com output
+begin TRAN
+delete from dbo.duptable
+output
+    deleted.custid,
+    deleted.empid
+where orderdate <= '20201231'
+rollback;
+
+-- porém, CTE é útil quando utilizada para deletar duplicatas
+
+with deldup as (
+
+    select *, 
+    ROW_NUMBER() over(partition by orderid
+                        order by orderid
+                        ) as rnw
+    from dbo.duptable
+)
+
+delete from deldup
+output
+deleted.orderdate,
+deleted.orderid,
+deleted.empid,
+deleted.custid,
+deleted.freight
+where rnw <> 1
+
+select * from duptable;
+
+with dropdup as (
+
+    select *,
+        row_number() over(partition by orderid
+                            order by (select null)) as rnw -- ordem arbitrária, não importa a ordem do delete)
+    from dbo.duptable
+)
+select * from dropdup;
+delete from dropdup
+output
+deleted.*
+where rnw > 1;
+go
+
+begin tran
+truncate table dbo.duptable
+
+rollback;
