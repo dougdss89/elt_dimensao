@@ -273,7 +273,7 @@ from Sales.Orders
 where n <= 10000;
 go
 
-select * from dbo.duptable
+select count(*) from dbo.duptable
 where orderid = 10248
 go
 
@@ -332,7 +332,6 @@ with dropdup as (
                             order by (select null)) as rnw -- ordem arbitrária, não importa a ordem do delete)
     from dbo.duptable
 )
-select * from dropdup;
 delete from dropdup
 output
 deleted.*
@@ -343,3 +342,75 @@ begin tran
 truncate table dbo.duptable
 
 rollback;
+
+-- delete com looping de contagem de linhas
+while 1 = 1 -- cria um loop infinito
+BEGIN
+with countdelete as (
+
+    select *,
+        row_number() over (partition by orderid
+                            order by (select null)) as rnw -- ordem arbitrária
+    from dbo.duptable
+)
+
+delete top(5000) from countdelete
+where rnw <> 1;
+
+if @@ROWCOUNT < 5000 break;
+end
+
+select * from dbo.duptable;
+go
+
+
+-- novo teste com remoção de duplicatas
+
+-- criando dados duplicados
+
+select 
+    empid, custid, orderdate, orderid
+into dbo.newduplicate
+from Sales.Orders
+cross join
+    dbo.Nums
+where n <= 20000
+
+select count(*) from dbo.newduplicate
+
+select *
+into tempdup
+from newduplicate
+where ROW_NUMBER() over (partition by orderid
+                            order by (select null)) <> 1;
+GO
+-- como as WF são executadas durante o SELECT, ela precisa ser pré-computada com uma CTE ou TEMP
+select * from tempdup;
+go
+
+select *,
+    row_number() over (partition by orderid
+                        order by (select null)) as rnw
+into #tbtempdup
+from dbo.newduplicate
+
+begin tran
+delete from #tbtempdup
+output
+    deleted.custid,
+    deleted.orderid,
+    deleted.rnw
+where rnw <> 1;
+ROLLBACK
+
+with stagedup as (
+
+    select *,
+        row_number() over (partition by orderid) as rwn
+    from dbo.newduplicate
+)
+select * 
+into dbo.salesnodup
+from stagedup
+where rwn = 1;
+GO

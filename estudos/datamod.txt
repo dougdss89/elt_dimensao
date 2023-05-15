@@ -73,3 +73,7 @@ Outro problema do truncate é resetar o identity, caso a coluna tenha
 Em tabelas que possuem FK ou views indexadas, não é possível executar truncate nelas.
 
 Devido a natureza do DELETE ele é melhor para deletar linhas duplicadas.
+
+O problema que se for deletar por lote, é necessário fazer um teste antes pois não é possível utilizar o begin tran com cte.
+
+Tome cuidado com a criação da window function na hora de declarar a tabela no partition by. Garanta que ele vá criar um particionamento que "se repete" a ponto de mudar quando o valor mudar.
