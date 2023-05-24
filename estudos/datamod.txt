@@ -77,3 +77,17 @@ Devido a natureza do DELETE ele é melhor para deletar linhas duplicadas.
 O problema que se for deletar por lote, é necessário fazer um teste antes pois não é possível utilizar o begin tran com cte.
 
 Tome cuidado com a criação da window function na hora de declarar a tabela no partition by. Garanta que ele vá criar um particionamento que "se repete" a ponto de mudar quando o valor mudar.
+
+----------- UPDATE -----------
+
+Duas formas comuns de se atualizar tabelas via comando update é utilizando table expressions ou variáveis
+
+Update com CTE dá uma possibibilidade de prever o que será atualizado com base nas colunas que foram selecionadas da tabela.
+
+O único problema é que não é possível utilizar o begin tran - rollback ou commit, justamente por causa da CTE; o que não ocorre com as views.
+
+Como uma view é um 'estrutura' que tem sua lógica armazenada, explicitar transações com SQL se torna possível, garantindo uma segurança a mais.
+
+O problema da view é que esbarra nas políticas de acesso e gerenciamento do ambiente de banco de dados da sua organização.
+
+Tenha em mente que ao atualizar a view, o que está sendo atualizado é a coluna da tabela fonte, a view é apenas um estágio de confirmação do procedimento.

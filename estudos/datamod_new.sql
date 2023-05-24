@@ -414,3 +414,117 @@ into dbo.salesnodup
 from stagedup
 where rwn = 1;
 GO
+
+
+----------- UPDATE -----------
+
+use tempdb;
+go
+
+if object_id('dbo.tempcust') is not null drop table dbo.tempcust;
+go
+
+select 
+    identity(int, 1, 1) as custkey,
+    isnull(custid,0) as custid, -- ignora o identity
+    companyname, 
+    country, 
+    region
+into dbo.tempcust
+from TSQLV6.Sales.Customers;
+GO
+
+select * from dbo.tempcust;
+go
+
+if object_id('dbo.stagecust') is not null drop table dbo.stagecust;
+go
+
+select 
+    identity(int, 1, 1) as custkey,
+    isnull(custid, 0) as custid,
+    companyname,
+    country,
+    region
+into dbo.stagecust
+from TSQLV6.sales.Customers;
+
+select * from dbo.stagecust;
+go
+
+update dbo.stagecust
+set region = 'not available'
+output
+    deleted.region,
+    inserted.region
+where region is null;
+
+with upd_cte as (
+
+    select 
+        src.custkey as src_custkey,
+        src.custid as src_custid,
+        src.region as src_region,
+        tgt.custkey as tgt_custkey,
+        tgt.custid as tgt_custid,
+        tgt.region as tgt_region
+    from dbo.tempcust as tgt
+        inner join
+        dbo.stagecust as src
+    on tgt.custkey = src.custkey
+)
+
+update upd_cte
+set tgt_region = src_region
+OUTPUT
+    deleted.tgt_region,
+    inserted.tgt_region
+where tgt_region is null
+
+select * from dbo.tempcust
+where region is null;
+
+select count(*) 
+from dbo.tempcust
+where region is null;
+
+-- atualizando com views
+if object_id ('dbo.vw_stagecust') is not null drop view dbo.vw_stagecust;
+go
+
+create or alter view dbo.vw_stagecust as
+
+select 
+    stg.custkey as stg_custkey,
+    stg.companyname as stg_compname,
+    case 
+        when stg.region is null then 'not av'
+        else stg.region
+    end as stg_region,
+    tgt.custkey as tgt_custkey,
+    tgt.companyname as tgt_compname,
+    tgt.region as tgt_region
+from dbo.stagecust as stg
+    inner join
+    dbo.tempcust as tgt
+on stg.custkey = tgt.custkey;
+go
+
+select * from dbo.vw_stagecust;
+
+begin TRAN
+update dbo.vw_stagecust
+set tgt_region = stg_region
+output
+    deleted.tgt_region,
+    inserted.tgt_region
+where tgt_region is null
+commit;
+go
+
+select * from dbo.tempcust;
+go
+select * from dbo.stagecust
+
+drop view dbo.vw_stagecust;
+go
