@@ -5,7 +5,12 @@ select
 	ppv.productid,
 	pv.businessentityid,
 	accountnumber,
-	name,
+	pv.name,
+	pvc.contacttype,
+	pvc.firstname,
+	pvc.lastname,
+	pvc.phonenumber,
+	pvc.phonenumbertype,
 	creditrating,
 	preferredvendorstatus,
 	averageleadtime,
@@ -15,9 +20,21 @@ select
 	minorderqty
 	maxorderqty,
 	onorderqty,
-	unitmeasurecode
+	unitmeasurecode,
+	pva.stateprovincename,
+	pva.countryregionname,
+	pva.addressline1,
+	pva.addressline2,
+	pva.city,
+	pva.postalcode
 from Purchasing.Vendor as pv
 	left join
 	purchasing.productvendor as ppv
-on pv.businessentityid = ppv.businessentityid;
+on pv.businessentityid = ppv.businessentityid
+	left join
+	purchasing.vVendorWithAddresses as pva
+on pv.businessentityid = pva.businessentityid
+	left join
+	purchasing.vVendorWithContacts as pvc
+on pva.businessentityid = pvc.businessentityid
 go
