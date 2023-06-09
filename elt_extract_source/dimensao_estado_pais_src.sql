@@ -9,6 +9,4 @@ select
 	psp.StateProvinceID,
 	psp.StateProvinceCode,
 	psp.[name]
-from Person.StateProvince as psp
-
-
+from Person.StateProvince as psp;

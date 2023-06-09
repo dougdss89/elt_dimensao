@@ -1,4 +1,4 @@
-select BusinessEntityID, rowguid from Person.Person;
+
 SELECT
 	pp.businessentityid,
 	pp.firstname,
