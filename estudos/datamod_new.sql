@@ -528,3 +528,153 @@ select * from dbo.stagecust
 
 drop view dbo.vw_stagecust;
 go
+
+drop table if exists dbo.temproduct;
+go
+
+select
+    productid,
+    productname,
+    unitprice
+into dbo.temproduct
+from production.products
+go
+
+select * from dbo.temproduct;
+
+with update_prod as (
+
+    select * from dbo.temproduct
+)
+
+update update_prod
+set unitprice = unitprice + unitprice * 0.2
+output
+deleted.unitprice,
+inserted.unitprice
+where unitprice < 18.00
+
+select * from dbo.temproduct
+where unitprice < 18;
+go
+
+begin tran
+update dbo.temproduct
+set unitprice = pp.unitprice
+output
+deleted.unitprice,
+inserted.productid,
+inserted.unitprice
+from dbo.temproduct as tp
+inner join
+production.products as pp
+on tp.productid = pp.productid
+where tp.unitprice <> pp.unitprice;
+commit;
+
+select * from dbo.temproduct;
+
+-- UPDATE COM VARIÁVEIS
+
+-- eliminando gaps em sequences e identity utilizando tabela de apoio
+
+use tempdb;
+go
+
+if object_id(N'dbo.mysequence') is not null drop table dbo.mysequence;
+go
+
+create table dbo.mysequence(
+
+    id int not null
+);
+GO
+insert into dbo.mysequence(id)
+values (0);
+go
+
+select * from dbo.mysequence;
+go
+
+-- agora com a tabela de apoio criada no tempdb, basta armazenar esse valor em uma variável
+declare @newid as int;
+update dbo.mysequence
+set @newid = id += 1;
+GO
+
+select * from dbo.mysequence;
+go
+
+-- teste para dw
+if object_id(N'dbo.testetable') is not null drop table dbo.testetable;
+go
+
+create  table dbo.testetable(
+
+    nome varchar(10),
+    id int
+);
+
+insert dbo.testetable (nome, id)
+values ('aaa', Cast(rand(checksum(newid()))*10 as int))
+go 10
+
+declare @idteste as int;
+set @idteste = 0;
+
+update dbo.testetable
+set id = @idteste + 1;
+
+select * from dbo.testetable;
+
+declare @valid as int = 0;
+select @valid;
+
+while @valid <= 11
+begin
+    update dbo.testetable
+    set id = @valid + 1
+end
+
+declare @tempid as int = (select min(id) from dbo.testetable);
+declare @maxtempid as int = (select distinct(count(*)) from dbo.testetable)
+while @tempid <= @maxtempid
+begin
+    begin tran
+        update dbo.testetable
+        set id = @tempid + 1
+set @tempid += 1
+end
+
+rollback
+go
+
+select * from dbo.testetable;
+select distinct(count(*)) from dbo.testetable;
+
+begin tran
+update dbo.testetable
+set id = (select min(id) + 1 from dbo.testetable)
+output
+deleted.id,
+inserted.id
+
+rollback;
+
+-- solucionando gaps com window function 
+with ct as (
+
+    select
+        id,
+        nome,
+        ROW_NUMBER() over( order by (select null)) as rwn
+    from dbo.testetable
+    )
+
+update ct
+set id = rwn
+output
+    deleted.id,
+    inserted.id
+
+select * from dbo.testetable;

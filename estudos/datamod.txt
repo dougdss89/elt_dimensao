@@ -91,3 +91,8 @@ Como uma view é um 'estrutura' que tem sua lógica armazenada, explicitar trans
 O problema da view é que esbarra nas políticas de acesso e gerenciamento do ambiente de banco de dados da sua organização.
 
 Tenha em mente que ao atualizar a view, o que está sendo atualizado é a coluna da tabela fonte, a view é apenas um estágio de confirmação do procedimento.
+
+Quando utilizado CTE's ou Views para atualizar uma tabela, é preciso destacar que somente é possível atualizar uma por vez.
+
+Um fato interessante no UPDATE, pelo menos com T-SQL, é que como o FROM funciona como WHERE, é possivel criar joins e atualizar uma tabela com base em outra.
+
