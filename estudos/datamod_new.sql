@@ -678,3 +678,119 @@ output
     inserted.id
 
 select * from dbo.testetable;
+
+
+-- outra forma seria criando uma tabela temporária e realizar um join
+if object_id('dbo.gapidentity') is not null drop table dbo.gapidentity;
+GO
+
+create table dbo.gapidentity (
+
+    id int not null,
+    letter varchar(5) not null
+);
+go
+
+insert into dbo.gapidentity
+values (1, 'aa'),
+        (3, 'bb'),
+        (4, 'dd'),
+        (10, 'ef'),
+        (6, 'ab'),
+        (6, 'fd'),
+        (8, 'hh'),
+        (9, 'll'),
+        (8, 'cd');
+go
+
+if object_id('dbo.tempidentity') is not null drop table dbo.tempidentity;
+go
+create table dbo.tempidentity(
+
+    id int not null,
+    letter varchar(5) not null
+);
+go
+
+insert into dbo.tempidentity
+select id, letter
+from dbo.gapidentity;
+go
+
+select * from dbo.tempidentity;
+go
+
+with seqidentity as (
+
+    select 
+        id,
+        letter,
+        ROW_NUMBER() over (order by (select null)) as rn
+    from dbo.tempidentity
+)
+update dbo.gapidentity 
+set id = rn
+from seqidentity as sq
+inner join
+dbo.gapidentity as gpi
+on gpi.id = sq.id
+
+select * from dbo.gapidentity;
+go
+
+-- utilizando temp table
+-- faça um select into com rownumber e atualize a partir disso
+-- ainda garante o determinismo da query utilizando order by fora da WF
+
+drop table if exists ##tempid;
+go
+select *,
+row_number() over (order by (select null)) as rn 
+into ##tempid
+from dbo.gapidentity
+order by rn;
+GO
+
+select * from ##tempid;
+
+begin tran
+update dbo.gapidentity
+set id = rn
+output
+    deleted.id,
+    inserted.id
+from ##tempid as tid
+inner join
+dbo.gapidentity as gpi
+on tid.id = gpi.id
+commit;
+
+select * from dbo.gapidentity;
+go
+
+
+-------------------------- MERGE --------------------------
+if object_id('dbo.stagecust') is not null drop table dbo.stagecust;
+go
+
+select 
+into dbo.stagecust
+from sales.customers;
+GO
+
+-- comando merge
+
+merge into  dbo.stagecust as tgt
+using  sales.customers as src
+on tgt.custid = src.custid
+when matched then 
+update set 
+    tgt.companyname = src.companyname,
+    tgt.phone = src.phone,
+    tgt.address = src.address
+when not matched then
+    insert ( companyname, phone, [address])
+    values ( src.companyname, src.phone, src.[address])
+when not matched by source then
+DELETE;
+

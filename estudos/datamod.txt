@@ -96,3 +96,10 @@ Quando utilizado CTE's ou Views para atualizar uma tabela, é preciso destacar q
 
 Um fato interessante no UPDATE, pelo menos com T-SQL, é que como o FROM funciona como WHERE, é possivel criar joins e atualizar uma tabela com base em outra.
 
+
+-------------------------- MERGE --------------------------
+
+Merge é uma forma de atualizar uma tabela base utilizando uma fonte, "misturando" as duas tabelas, mantendo os valores necesários. Apenas.
+
+Merge permite duas formas de manipulação: WHEN MATCHED THEN e WHEN NOT MATCHED THEN e ambos podem variar com WHEN NOT MATCHED BY SOURCE THEN..
+
