@@ -773,7 +773,7 @@ go
 if object_id('dbo.stagecust') is not null drop table dbo.stagecust;
 go
 
-select 
+select *
 into dbo.stagecust
 from sales.customers;
 GO
@@ -794,3 +794,16 @@ when not matched then
 when not matched by source then
 DELETE;
 
+--- com base em um campo
+
+merge into dbo.stagecust as tgt
+using sales.customers as src
+on tgt.custid = src.custid
+when matched and src.contacttitle like 'sales%' then
+    delete
+
+when not matched by source then
+delete;
+go
+
+select * from stagecust;
