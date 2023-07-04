@@ -807,3 +807,90 @@ delete;
 go
 
 select * from stagecust;
+
+begin tran
+update stagecust
+set contactname = 'aaaa'
+output
+    deleted.contactname,
+    inserted.contactname
+where contactname is not null
+commit;
+
+merge into dbo.stagecust as st
+using sales.customers  as sc
+on st.custid = sc.custid
+
+when matched and
+    (st.contactname <> sc.contactname
+    or st.region is null) then
+update set 
+    st.contactname = sc.contactname,
+    st.region = 'not know'
+
+when not matched by source then
+delete;
+go
+
+select * from dbo.stagecust;
+
+select * from sales.customers;
+go
+
+if object_id(N'mergetable') is not null drop table dbo.mergetable;
+go
+
+SELECT
+    custid,
+    companyname,
+    contacttitle,
+    city,
+    region
+    country,
+    case
+        when contacttitle like 'owner' then 'update'
+        when contacttitle like '%representative' then 'delete'
+        else 'No action'
+    end as flag
+into dbo.mergetable
+from dbo.stagecust
+
+select * from mergetable;
+go
+
+merge into dbo.mergetable as mgt
+using dbo.stagecust as sc
+on sc.custid = mgt.custid
+
+when matched and flag = 'update'
+then 
+update set 
+    mgt.contacttitle = sc.contacttitle, 
+    mgt.flag = 'updated'
+when matched and flag = 'delete'
+then 
+    delete;
+
+select * from dbo.mergetable;
+
+-- UTILIZANDO EXCEPT
+-- ALTERNATIVA PARA EXCLUIR UMA DETERMINADA CONDIÇÃO
+
+select top(5) * from mergetable;
+
+select top(5) * from dbo.stagecust;
+
+begin tran
+merge into dbo.mergetable as tgt
+using dbo.stagecust as src
+on tgt.custid = src.custid
+when matched and exists (select tgt.city except select src.city where src.city like 'mexico%') 
+then
+update set 
+    tgt.city = 'not city'
+
+when not matched by source then 
+delete;
+
+rollback
+select * from mergetable;

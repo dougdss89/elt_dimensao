@@ -15,3 +15,16 @@ and p1.y = p2.x
 where p1.rn <> p2.rn
 and p1.x <= p1.y
 order by p1.x asc;
+
+
+
+
+update dbo.stagecust
+set contacttitle = 'Not Owner'
+where contacttitle = 'Owner'
+
+update dbo.mergetable
+set contacttitle = 'Owner'
+where contacttitle = 'Not owner'
+
+select *  from dbo.stagecust;

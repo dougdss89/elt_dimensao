@@ -103,3 +103,16 @@ Merge é uma forma de atualizar uma tabela base utilizando uma fonte, "misturand
 
 Merge permite duas formas de manipulação: WHEN MATCHED THEN e WHEN NOT MATCHED THEN e ambos podem variar com WHEN NOT MATCHED BY SOURCE THEN..
 
+WHEN MATCHED é aplicado quando a fonte encontra correspondência com a tabela alvo especificada no merge.
+
+é possível executar updates 'singulares' em uma única coluna dentro do WHEN MATCHED. Desde que atenda a especificação.
+
+Existem duas formas de WHEN NOT MATCHED.
+
+1 - WHEN NOT MATCHED - uma abreviação de WHEN NOT MATCHED BY TARGET.
+2 - WHEN NOT MATCHED BY SOURCE - indica que tal condição não foi atendida pela fonte.
+
+Não é possível utilizar UPDATE na condição WHEN NOT MATCHED, independente de qual seja. Por outro lado, o INSERT não é permitido no WHEN MATCHED THEN.
+
+
+
