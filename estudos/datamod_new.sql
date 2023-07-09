@@ -841,11 +841,11 @@ if object_id(N'mergetable') is not null drop table dbo.mergetable;
 go
 
 SELECT
-    custid,
+    identity(int, 1, 1) as custkey,
+    coalesce(custid, 0) as custid,
     companyname,
     contacttitle,
     city,
-    region
     country,
     case
         when contacttitle like 'owner' then 'update'
@@ -894,3 +894,39 @@ delete;
 
 rollback
 select * from mergetable;
+
+alter table mergetable
+add isactual varchar(5);
+
+alter table mergetable
+add custkey int identity(1,1)
+
+begin tran
+merge into dbo.mergetable as tgt
+using dbo.stagecust as src
+on tgt.custkey = src.custkey
+
+when matched and     
+    tgt.country = src.country
+    and tgt.country is not null
+
+then update set 
+    tgt.isactual = 'Yes'
+
+when not matched then
+insert (companyname, contacttitle, city, country, flag, isactual)
+values (src.companyname, src.contacttitle, src.city, src.country, 'updated', 'yes');
+rollback;
+
+select * from dbo.mergetable;
+
+select * from stagecust;
+
+
+select count(country), country
+from dbo.mergetable
+group by country;
+
+update dbo.mergetable
+set custid += 1
+where country = 'usa' or country = 'germany'
