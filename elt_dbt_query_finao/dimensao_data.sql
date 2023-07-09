@@ -9,6 +9,7 @@ from Sales.SalesOrderHeader),
 cria_dimdate as (
 
 select
+	
 	orderdate,
 	year(orderdate) as orderyear,
 	'FY' + cast(year(orderdate) as varchar(5)) as fiscalyear,
@@ -54,6 +55,8 @@ select
 	end as leapyear
 from elt_dimdate),
 
+
+
 normaliza_data as(
 
 	select 
@@ -77,4 +80,3 @@ normaliza_data as(
 	from cria_dimdate)
 
 select * from normaliza_data
-order by orderdate

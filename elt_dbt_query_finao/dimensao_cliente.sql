@@ -1,69 +1,46 @@
-use AdventureWorks2019;
+use dwadvworks_hml;
 go
 
-WITH pre_customer AS (
-SELECT
-	pp.businessentityid,
-	pp.firstname,
-	pp.lastname,
-	pp.persontype,
-	pp.emailpromotion,
-	ppt.name AS typephone,
-	pph.phonenumber,
-	pad.postalcode,
-	pat.name,
-	emailaddress as email,
-	psp.territoryid,
-	pcr.name AS countryname,
-	pad.stateprovinceid AS stateid,
-	psp.countryregioncode AS countrycode,
-	psp.stateprovincecode AS statecode,
-	psp.name AS statename,
-	pad.city,
-	pad.addressline1,
-	pad.addressline2,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:TotalPurchaseYTD)[1]','numeric(12,2)') AS TotalPurchaseYTD,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:DateFirstPurchase)[1]','date') AS DateFirstPurchase,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:BirthDate)[1]','date') AS BirthDate,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:MaritalStatus)[1]','varchar(10)') AS MaritalStatus,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:YearlyIncome)[1]','varchar(50)') AS YearlyIncome,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:Gender)[1]','varchar(10)') AS Gender,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:TotalChildren)[1]','smallint') AS TotalChildren,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:NumberChildrenAtHome)[1]','smallint') AS NumberChildrenAtHome,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:Education)[1]','varchar(50)') AS Education,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:Occupation)[1]','varchar(50)') AS Occupation,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:HomeOwnerFlag)[1]','varchar(5)') AS HomeOwnerFlag,
-	pp.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey"; (/ns:IndividualSurvey/ns:NumberCarsOwned)[1]','smallint') AS NumberCarsOwned
-FROM person.person AS pp
-LEFT JOIN
-	person.personphone AS pph
-ON pp.businessentityid = pph.businessentityid
-LEFT JOIN
-	person.phonenumbertype AS ppT
-ON pph.phonenumbertypeid = ppT.phonenumbertypeid
-LEFT JOIN
-	person.businessentityaddress AS pba
-ON pp.businessentityid = pba.businessentityid
-LEFT JOIN
-	person.address AS pad
-ON pba.addressid = pad.addressid
-LEFT JOIN
-	person.addresstype AS pat
-ON pba.addresstypeid = pat.addresstypeid
-LEFT JOIN
-	person.emailaddress AS pea
-ON pp.businessentityid = pea.businessentityid
-LEFT JOIN
-	person.stateprovince AS psp
-ON pad.stateprovinceid = psp.stateprovinceid
-LEFT JOIN
-	person.countryregion AS pcr
-ON psp.countryregioncode = pcr.countryregioncode
-WHERE pp.businessentityid NOT IN (SELECT businessentityid
-									FROM HumanResources.employee)),
+with pre_customer as (
+	
+select
+    businessentityid,
+    firstname,
+    lastname,
+    persontype,
+    emailpromotion,
+    typephone,
+    postalcode,
+    addresstype,
+    emailaddress,
+    territoryid,
+    countryname,
+    stateprovinceid,
+    countryregioncode,
+    stateprovincecode,
+    statename,
+    city,
+    addressline1,
+    addressline2,
+    totalpurchaseytd,
+    datefirstpurchase,
+    birthdate,
+    maritalstatus,
+    yearlyincome,
+    gender,
+    totalchildren,
+    numberchildrenathome,
+    education,
+    occupation,
+    homeownerflag,
+    numbercarsowned,
+    customerkey
+
+from stg_dim.stgcustomer),
 
 elt_clientes as (
 select
+		customerkey,
 		businessentityid as customerid,
 		firstname, 
 		lastname,
@@ -96,19 +73,18 @@ select
 			when emailpromotion >= 1 then 'Yes'
 			else 'No'
 		end as emailpromotion,
-		email,
+		emailaddress,
 		case
 			when typephone = 'cell' then 'Mobile'
 			else coalesce(typephone, 'Not Available')
 		end as typephone,
-		phonenumber,
-		coalesce([name], 'Not Available') as typeaddress,
+		coalesce([addresstype], 'Not Available') as typeaddress,
 		coalesce(postalcode, 'Not Available') as postalcode,
 		coalesce(territoryid, 0) as territoryid,
 		coalesce(countryname, 'Not Available') as countryname,
-		coalesce(stateid, 0) as stateid,
-		coalesce(countrycode, 'Not Available') as countrycode,
-		coalesce(statecode, 'Not Available') as statecode,
+		coalesce(stateprovinceid, 0) as stateprovinceid,
+		coalesce(countryregioncode, 'Not Available') as countryregioncode,
+		coalesce(stateprovincecode, 'Not Available') as stateprovincecode,
 		coalesce(statename, 'Not Available') as statename,
 		coalesce(city, 'Not Available') as city,
 		coalesce(addressline1, 'Not Available') as custaddress,
@@ -172,6 +148,7 @@ on col1.customerid = col4.customerid),
 
 finaliza_etl as (
 select distinct
+	customerkey,
 	cast(eltc.customerid as int) as customerid,
 	cast(firstname as varchar(40)) as firstname,
 	cast(lastname as varchar(40)) as lastname,
@@ -190,15 +167,14 @@ select distinct
 	cast(maxincome as varchar(20)) as maxincome,
 	cast(totalpuchased as numeric(12,2)) as totalpurchased,
 	cast(numberscarsowned as tinyint) as numbersofcarsowned,
-	cast(email as varchar(100)) as email,
+	cast(emailaddress as varchar(100)) as emailaddress,
 	cast(typephone as varchar(6)) as typephone,
-	cast(phonenumber as nvarchar(15)) as phonenumber,
 	cast(typeaddress as varchar(6)) as typeaddress,
 	cast(territoryid as smallint) as countryid,
 	cast(countryname as varchar(15)) as countryname,
-	cast(stateid as smallint) as stateid,
-	cast(countrycode as char(5)) as countrycode,
-	cast(statecode as char(5)) as statecode,
+	cast(stateprovinceid as smallint) as stateid,
+	cast(countryregioncode as char(5)) as countrycode,
+	cast(stateprovincecode as char(5)) as statecode,
 	cast(statename as varchar(25)) as statename,
 	cast(city as varchar(20)) as city,
 	cast(postalcode as nvarchar(10)) as postalcode,
@@ -212,7 +188,8 @@ from elt_clientes as eltc
 	une_endereco as uned
 on eltc.customerid = uned.customerid)
 
-select * from finaliza_etl;
+select * from finaliza_etl
+order by customerkey;
 
 
 
