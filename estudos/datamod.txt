@@ -114,5 +114,20 @@ Existem duas formas de WHEN NOT MATCHED.
 
 Não é possível utilizar UPDATE na condição WHEN NOT MATCHED, independente de qual seja. Por outro lado, o INSERT não é permitido no WHEN MATCHED THEN.
 
+Caso o MERGE esteja em uma procedure que possui múltiplas chamadas em por uma aplicação, há o risco de retornar erro de restrição de chave. Para evitar isso, utilize o WITH (SERIALIZABLE)
 
+Com o SERIALIZABLE, há a garantia de acesso serializado na tabela.
+
+A cláusula ON não um filtro, mas um definidor para as colunas utilizadas na construção. Se por um acaso, uma das condições for falsa, o resultado pode ser diferente.
+
+------ OUTPUT ------
+
+o output é um comando que permite visualizar os dados modificados em um comando SQL. Válido para INSERT, UPDATE E DELETE, ele permite tanto ver os dados que foram deletados quanto os que foram inseridos.
+
+// em updates, o banco primeiro deleta o dado atual para depois, inserir o dado novo.
+
+O output possui duas formas. Uma utilizando INTO e a outra apenas retornando as colunas desejadas.
+Quando o INTO  é utilizado, o banco irá esrever os dados manipulados em uma outra tabela.
+
+A flexibilidade do comando é  tanta que ele permite criar cálculos entre as tabelas, funcionando como um select.
 

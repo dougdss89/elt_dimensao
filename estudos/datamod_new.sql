@@ -930,3 +930,77 @@ group by country;
 update dbo.mergetable
 set custid += 1
 where country = 'usa' or country = 'germany'
+
+-- FLAG SERIALIZABLE --
+
+if object_id(N'dbo.addcustomer') is not null drop proc dbo.addcustomer;
+go
+
+create proc dbo.addcustomer 
+
+@custid int, @companyname varchar(25), @phone varchar(20), @address varchar(50)
+as
+
+merge into dbo.customers with (serializable)  as tgt
+using (values (@custid, @companyname, @phone, @address)) 
+as src (custid, companyname, phone, [address])
+on tgt.custid = src.custid
+
+when matched then 
+    update set
+        tgt.companyname = src.companyname,
+        tgt.phone = src.phone,
+        tgt.[address] = src.[address]
+
+when not matched then 
+    insert (custid, companyname, phone, [address])
+    values (src.custid, src.companyname, src.phone, src.[address]);
+go
+
+set nocount ON
+use tempdb;
+go
+
+while 1 = 1
+begin
+    declare @curcustid as int = checksum(cast(sysdatetime() as datetime2(2)));
+    exec dbo.addcustomer @custid = @curcustid, @companyname = 'a', @phone='b', @address = 'c';
+end;
+
+
+merge into dbo.customers as tgt
+using sales.customers as src
+on tgt.custid = src.custid
+and src.custid = 2
+
+when matched then
+    update set
+        tgt.companyname = src.companyname,
+        tgt.phone = src.phone,
+        tgt.address = src.address
+
+when not matched then
+    insert (custid, companyname, phone, [address])
+    values (src.custid, src.companyname, src.phone, src.[address]);
+
+---- OUTPUT ---
+
+-- exemplo com identity - insert
+
+if object_id(N'dbo.testeoutput') is not null drop table dbo.testeoutput;
+go
+
+create table dbo.testeoutput (
+
+    keycol int identity(1,1) not null primary key clustered,
+    datacol NVARCHAR(40) not null
+);
+go
+
+insert dbo.testeoutput (datacol)
+output 
+    inserted.$identity, 
+    inserted.datacol
+select lastname
+from HR.employees
+where country = 'usa';
