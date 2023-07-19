@@ -1,7 +1,3 @@
--- dimensão produto
-use AdventureWorks2019;
-go
-
 with elt_dim_product as (
 select
 	pp.productid,

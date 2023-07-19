@@ -27,3 +27,4 @@ from Sales.SalesOrderDetail as sso
 left join
 	Sales.SalesOrderHeader as soh
 on sso.SalesOrderID = soh.SalesOrderID
+

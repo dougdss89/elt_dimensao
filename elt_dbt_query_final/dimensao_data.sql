@@ -45,7 +45,7 @@ select
 	cast(datepart(YYYY, orderdate) as varchar(5)) + '' +  cast(month(orderdate) as varchar(5)) as yearmonthnum,
 	eomonth(orderdate) as lastdayofmonth,
 	case
-		when datepart(d, orderdate) = datepart(d, eomonth(orderdate)) then 'Yes'
+		when cast(orderdate as date) = cast(eomonth(orderdate) as date) then 'Yes'
 		--when datepart(m, orderdate) = 2 and datepart(d, orderdate) between 28 and 29 then 'Yes'
 	else 'No'
 	end as islastdayofmonth,
@@ -80,3 +80,4 @@ normaliza_data as(
 	from cria_dimdate)
 
 select * from normaliza_data
+order by orderdate;

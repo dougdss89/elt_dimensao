@@ -1,9 +1,3 @@
--- dimensão salesperson
--- só preciso converter a coluna bonus quando for passar pro DBT
-
-use AdventureWorks2019;
-go
-
 with salesperson_etl as (
 
 select 

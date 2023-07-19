@@ -69,3 +69,4 @@ final_elt as (
 select * from remove_null)
 
 select * from final_elt;
+
