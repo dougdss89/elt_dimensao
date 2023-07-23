@@ -230,6 +230,7 @@ select
 	cast(stocklevel as smallint) stocklevel,
 	cast(reorder as smallint) as reorder,
 	cast(daystomanufacture as varchar(10)) as daystomanufacture,
+	cast(manufactureclass as varchar(10)) as manufactureclass,
 	sellstartdate,
 	sellenddate
 

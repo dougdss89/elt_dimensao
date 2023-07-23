@@ -230,6 +230,7 @@ select
 	cast(stocklevel as smallint) stocklevel,
 	cast(reorder as smallint) as reorder,
 	cast(daystomanufacture as varchar(10)) as daystomanufacture,
+	cast(manufactureclass as varchar(10)) as manufactureclass,
 	sellstartdate,
 	sellenddate
 
@@ -240,4 +241,4 @@ dim_produto_final as(
 select * from converte_dim_produto)
 
 select * from dim_produto_final
-where subcategoryid = 0 and categoryname like 'Discontinued';
+where subcategoryid = 0 and categoryname  like 'Discontinued';
