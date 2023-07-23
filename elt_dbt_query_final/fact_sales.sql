@@ -1,20 +1,11 @@
-use AdventureWorks2019;
-go
-
 with fact_elt as (
 
 select
-	cast(sso.SalesOrderID as int) as salesorderid,
-	cast(sso.SalesOrderDetailID as int) as detailorderid,
-	cast(soh.OrderDate as date) as orderdate,
-	cast(soh.ShipDate as date) as shipdate,
-	cast(soh.DueDate as date) as duedate,
-	cast(PurchaseOrderNumber as varchar(40)) as purchasenumber,
-	cast(SalesOrderNumber as varchar(20)) as salesnumber,
-	cast(CarrierTrackingNumber as varchar(20)) as carriertrackingserial,
-	cast(AccountNumber as varchar(20)) as serialaccount,
-	cast(CreditCardApprovalCode as varchar(20)) as cardapprovalcode,
-	cast(CreditCardID as int) as creditcardid,
+	cast(SalesOrderID as int) as salesorderid,
+	cast(SalesOrderDetailID as int) as detailorderid,
+	cast(OrderDate as date) as orderdate,
+	cast(ShipDate as date) as shipdate,
+	cast(DueDate as date) as duedate,
 	cast(SalesPersonID as smallint) as salespersonid,
 	cast(ProductID as smallint) as productid,
 	cast(CustomerID as int) as customerid,
@@ -31,10 +22,7 @@ select
 		else 'no'
 	end as isonlineorder,
 	cast(LineTotal as numeric(12,2)) as linetotal
-from Sales.SalesOrderDetail as sso
-left join
-	Sales.SalesOrderHeader as soh
-on sso.SalesOrderID = soh.SalesOrderID),
+from stg_fact.stgfactsales),
 
 remove_null as (
 
@@ -44,12 +32,6 @@ select
 	orderdate,
 	shipdate,
 	duedate,
-	coalesce(purchasenumber, salesnumber + 'ONL') as purchasenumber,
-	coalesce(carriertrackingserial, 'Picked Up on Site') as carriertrackingserial,
-	serialaccount,
-	coalesce(cardapprovalcode, 'Cash Payment') as cardapprovalcode,
-	coalesce(creditcardid, 0) as creditcardid,
-	coalesce(salespersonid, 0) as salespersonid,
 	productid,
 	customerid,
 	shippingid,
@@ -62,6 +44,7 @@ select
 	freight,
 	linetotal,
 	isonlineorder
+
 from fact_elt),
 
 final_elt as (

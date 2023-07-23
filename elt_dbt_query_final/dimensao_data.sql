@@ -1,15 +1,13 @@
-use AdventureWorks2019;
-go
-
 with elt_dimdate as (
 select
 	distinct(cast(orderdate as date)) as orderdate
-from Sales.SalesOrderHeader),
+from stg_dim.stgdate),
 
 cria_dimdate as (
 
 select
-	
+
+	cast(replace(orderdate,'-','') as varchar(10)) as orderdatekey,
 	orderdate,
 	year(orderdate) as orderyear,
 	'FY' + cast(year(orderdate) as varchar(5)) as fiscalyear,
@@ -53,6 +51,7 @@ select
 		when year(orderdate) % 4 = 0 or year(orderdate) % 400 = 0 and year(orderdate) % 100 <> 0  then 'Yes'
 	else 'No'
 	end as leapyear
+
 from elt_dimdate),
 
 
@@ -60,7 +59,8 @@ from elt_dimdate),
 normaliza_data as(
 
 	select 
-		orderdate,
+		distinct
+		cast(orderdatekey as int) as orderdatekey,
 		orderyear,
 		monthname,
 		monthabrv,
@@ -79,5 +79,4 @@ normaliza_data as(
 		leapyear
 	from cria_dimdate)
 
-select * from normaliza_data
-order by orderdate;
+select * from normaliza_data;

@@ -1,5 +1,3 @@
-use dwadvworks_hml;
-go
 
 with pre_customer as (
 	

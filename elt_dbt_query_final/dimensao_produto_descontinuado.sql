@@ -240,4 +240,4 @@ dim_produto_final as(
 select * from converte_dim_produto)
 
 select * from dim_produto_final
-where subcategoryid > 0 and categoryname not like 'Discontinued';
+where subcategoryid = 0 and categoryname like 'Discontinued';
