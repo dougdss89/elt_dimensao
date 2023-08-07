@@ -1,12 +1,14 @@
 with elt_promo as (
 
 select 
-    specialofferid,
-    [description],
-    discountpct,
-    [type],
-    category,
+
+    specialofferid as promotionid,
+    [description] as promotiondescription,
+    discountpct as discountpercent,
+    [type] as promotiontype,
+    category as promocategory,
     minqty,
+
     case
         when maxqty is null and [type] like 'No disc%' then 0
         when maxqty is null and MinQty > 60 then 70
@@ -16,12 +18,14 @@ select
         when maxqty is null and [type] like 'new pro%' then 10
     else maxqty
     end as maxqty,
+
     cast(startdate as date) as startdate,
     cast(enddate as date) as enddate,
     case 
         when enddate is not null and enddate >= (select max(cast(orderdate as date)) from sales.salesorderheader ) or [type] not like 'discontinued%' then 'Yes'
         else 'No'
     end as ispromoactive
+
 from sales.SpecialOffer)
 
 

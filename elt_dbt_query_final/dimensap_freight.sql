@@ -1,6 +1,6 @@
 select 
 
-    shipmethodid,
+    shipmethodid as shipid,
     [name] as freightname,
     shipbase,
     shiprate
