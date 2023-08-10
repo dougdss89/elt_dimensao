@@ -1,6 +1,4 @@
-use AdventureWorks2019;
-go
-
+/*
 with xml_extract as (
 select
 	st.businessentityid as storeid,
@@ -44,49 +42,56 @@ on pp.BusinessEntityID = sc.PersonID
 left join
 Sales.SalesTerritory as sst
 on
-sc.TerritoryID = sst.TerritoryID),
+sc.TerritoryID = sst.TerritoryID),*/
 
-store_elt as (
-select distinct
-	storeid,
-	managerid,
-	businessentityid,
-	buyerid,
-	storename,
-	managername,
-	salesrepresentant as salespersonid,
-	yearopened,
-	datediff(y, YearOpened, cast(year(getdate()) as smallint)) as yearsactive,
-	businesstype,
-	specialty,
-	case 
-		when brands = '4+' then 'Four or More'
-		when brands = '2' then 'Two Brands'
-		when brands = '1' then 'One Brand'
-		when brands = '3' then 'Three brands'
-		else 'Adv Works'
-	end as brands,
-	internet,
-	case
-		when AnnualSales > 0 then AnnualRevenue
-		else AnnualSales
-	end as annualsales,
-	annualrevenue,
-	case
-		when annualrevenue <= 30000.00 then 'Local store'
-		when annualrevenue > 30000.00 and annualrevenue < 80000.00 then 'Small store'
-		when annualrevenue > 80000.00 and annualrevenue < 100000.00 then 'Medium store'
-		when annualrevenue > 100000 and annualrevenue < 150000.00 then 'Large store'
-		else 'Global company'
-	end as storesize,
-	numberemployees,
-	xme.territoryid,
-	continent,
-	country,
-	case
-		when country not like 'United States' then 'Central'
-	else countryregion
-	end as countryregion
+with store_elt as (
+
+	select
+		storeid,
+		managerid,
+		businessentityid,
+		buyerid,
+		storename,
+		managername,
+		salesrepresentant as salespersonid,
+		yearopened,
+		datediff(y, YearOpened, cast(year(getdate()) as smallint)) as yearsactive,
+		businesstype,
+		specialty,
+		
+		case 
+			when brands = '4+' then 'Four or More'
+			when brands = '2' then 'Two Brands'
+			when brands = '1' then 'One Brand'
+			when brands = '3' then 'Three brands'
+			else 'Adv Works'
+		end as brands,
+		internet,
+
+		case
+			when AnnualSales > 0 then AnnualRevenue
+			else AnnualSales
+		end as annualsales,
+		annualrevenue,
+
+		case
+			when annualrevenue <= 30000.00 then 'Local store'
+			when annualrevenue > 30000.00 and annualrevenue < 80000.00 then 'Small store'
+			when annualrevenue > 80000.00 and annualrevenue < 100000.00 then 'Medium store'
+			when annualrevenue > 100000 and annualrevenue < 150000.00 then 'Large store'
+			else 'Global company'
+		end as storesize,
+
+		numberemployees,
+		xme.territoryid,
+		continent,
+		country,
+
+		case
+			when country not like 'United States' then 'Central'
+		else countryregion
+		end as countryregion
+
 from xml_extract as xme)
 
 select * from store_elt;

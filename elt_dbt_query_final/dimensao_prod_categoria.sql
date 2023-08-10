@@ -1,7 +1,3 @@
-use AdventureWorks2019;
-go
-
--- dimencao procut_category
 
 with etl_prod_category as (
 

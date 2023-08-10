@@ -1,6 +1,7 @@
 with fact_elt as (
 
 select
+
 	cast(SalesOrderID as int) as salesorderid,
 	cast(SalesOrderDetailID as int) as detailorderid,
 	cast(OrderDate as date) as orderdate,
@@ -17,16 +18,19 @@ select
 	cast(unitpricediscount as numeric(12,3)) as discountprice,
 	cast(taxamt as numeric(9,2)) as taxes,
 	cast(freight as numeric(9,2)) as freight,
+
 	case
 		when OnlineOrderFlag = 1 then 'yes'
 		else 'no'
 	end as isonlineorder,
+
 	cast(LineTotal as numeric(12,2)) as linetotal
 from stg_fact.stgfactsales),
 
 remove_null as (
 
 select 
+
 	salesorderid,
 	detailorderid,
 	orderdate,

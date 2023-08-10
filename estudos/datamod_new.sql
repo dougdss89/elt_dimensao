@@ -5,78 +5,115 @@ set nocount on;
 
 
 --img01
-if object_id ('dbo.myorders') is not null drop table dbo.myorders;
+if object_id ('tmp.myorders') is not null drop table tmp.myorders;
 go
 
-select orderid, custid, cast(empid as bigint) as empid, orderdate, shipperid
-into dbo.myorders
+select orderid, 
+		custid, 
+		cast(empid as bigint) as empid, 
+		orderdate, 
+		shipperid
+
+into tmp.myorders
 from sales.orders;
 go
 
-select * from dbo.myorders;
+select top(5) * from tmp.myorders;
 GO
 
 --img02
 -- excluindo a propriedade identity da coluna
-if OBJECT_ID('dbo.myordersid') is not null drop table dbo.myordersid
+if OBJECT_ID('tmp.myordersid') is not null drop table tmp.myordersid
 go
-select isnull(orderid, 0) as orderid, empid, orderdate, shipperid
-into dbo.myordersid
+select 
+	isnull(orderid, 0) as tmporderid, -- isnull ou coalesce retiram o identity
+	empid, 
+	orderdate, 
+	shipperid
+into tmp.myordersid
 from Sales.Orders;
 go
 
-select * from dbo.myordersid;
-
--- criando um coluna com identity
---img03
 select 
+	object_id,
+	[name] as colname,
+	is_identity
+from sys.all_columns where [name] = 'tmporderid';
+go
+
+select * from tmp.myordersid;
+go
+
+select * from tmp.myordersid;
+go
+
+drop table if exists tmp.colidt;
+go
+-- criando um coluna com identity
+
+select 
+
     IDENTITY(int, 1,1) as newcol,
     empid, 
     orderdate,
     shipperid
-into dbo.colidt
+
+into tmp.colidt
 from sales.orders;
 go
 
-select * from dbo.colidt;
+drop table if exists tmp.ordercol;
 go
 
-if object_id('dbo.colidt') is not null drop table dbo.colidt;
+select top(100)
+
+	IDENTITY(int, 1,1) as ordercolid,
+	empid,
+	orderdate
+into tmp.ordercol
+from Sales.Orders
+order by ordercolid asc;
+go
+
+select * from tmp.ordercol;
+go
+
+if object_id('tmp.colidt') is not null drop table tmp.colidt;
 go
 -- se for necessário a ordem
---img04
-create table dbo.colidt (
+
+create table tmp.colidt (
     colid int IDENTITY(1,1) not null,
     empid int,
     orderdate date,
     shipperid int);
 GO
-insert dbo.colidt (empid, orderdate, shipperid)
+insert tmp.colidt (empid, orderdate, shipperid)
 select empid, orderdate, shipperid
 from sales.Orders;
 
-select * from dbo.colidt;
+select * from tmp.colidt;
 
 --img05
 -- o problema do select into é o lock na tabela
 -- ele não bloqueia só a tabela, mas os schemas.
-if object_id('dbo.myorders') is not null drop table dbo.myorders;
+if object_id('tmp.myorders') is not null drop table tmp.myorders;
 go
 
 begin tran
 select orderid, custid, empid, shipperid, orderdate
-into dbo.myorders
+into tmp.myorders
 from Sales.orders;
 
 --------------- SEQUENCE X IDENTITY ---------------
 
 -- identity
 
-select * from dbo.colidt;
+select * from tmp.colidt;
 
 --img06
 -- colunas identity não podem ser atualizadas.
-update dbo.colidt
+update tmp.colidt
 set colid = 0
 OUTPUT
     deleted.colid,
@@ -110,7 +147,7 @@ select next value for seq.seqteste;
 
 -- testando sequence
 
-if object_id('dbo.myorders') is not null drop table dbo.myorders;
+if object_id('tmp.myorders') is not null drop table tmp.myorders;
 go
 
 select 
@@ -119,30 +156,30 @@ select
     custid,
     shipperid,
     orderdate
-into dbo.myorders
+into tmp.myorders
 from Sales.Orders
 where empid = 1;
 go
 
-alter table dbo.myorders add CONSTRAINT pk_myorder primary key (orderid);
+alter table tmp.myorders add CONSTRAINT pk_myorder primary key (orderid);
 go
-select * from dbo.myorders;
+select * from tmp.myorders;
 go
 
-update dbo.myorders
+update tmp.myorders
 set orderid = next value for seq.seqteste;
 go
 
-update dbo.myorders
+update tmp.myorders
 set empid = next value for seq.seqteste;
 
-select * from dbo.myorders;
+select * from tmp.myorders;
 
 -- preservando a ordem da tabela fonte
-truncate table dbo.myorders;
+truncate table tmp.myorders;
 go
 
-insert into dbo.myorders(orderid, empid, custid, orderdate, shipperid)
+insert into tmp.myorders(orderid, empid, custid, orderdate, shipperid)
 select 
     next value for seq.seqteste over(order by orderid) as orderid,
     empid,
@@ -153,37 +190,122 @@ from Sales.Orders
 where empid = 2;
 go
 
-select * from dbo.myorders
+select * from tmp.myorders
 
 select * from Sales.Orders
 where empid = 2;
 
 --------------- DATA MANIPULATION: DELETE, TRUNCATE & UPDATE ---------------
 
-drop table if exists dbo.truncatetb;
+drop table if exists tmp.truncatetb;
 go
 
 select 
     empid,
     custid,
     orderdate
-into dbo.truncatetb
+into tmp.truncatetb
 from sales.orders;
 go
 
-select * from dbo.truncatetb;
+select * from tmp.truncatetb;
+go
+
+drop table if exists #temp_truncate;
+go
+
+select 
+	empid,
+	custid,
+	orderdate
+into #temp_truncate
+from Sales.Orders;
+go
+
+select * from #temp_truncate;
+go
+
+truncate table #temp_truncate;
 go
 
 begin tran
-truncate table dbo.truncatetb
+truncate table tmp.truncatetb
 
 rollback;
 go
-select * from dbo.truncatetb;
+select * from tmp.truncatetb;
 go
 
+-- cria dados duplicados
+-- criei a tabela tmp.duplicate com select into
+drop table if exists tmp.duplicate;
+
+insert into tmp.duplicate
+select orderdate, custid, coalesce(orderid, 0) as orderid, shipcountry
+from Sales.Orders;
+go 5
+
+select * from tmp.duplicate where orderid = 10248;
+
+-- limpa duplicate tmp.duplicate
+-- cria a cte para pré filtrar  as duplicatas criando um numero para as linhas
+
+with dedup_duplicate as (
+
+	select
+		orderdate, custid,
+		orderid, shipcountry,
+		ROW_NUMBER() over (partition by orderdate, custid, orderid, shipcountry
+							order by orderid) as rn_dedup
+	from tmp.duplicate)
+
+delete dedup_duplicate
+output
+	deleted.orderdate,
+	deleted.custid
+where rn_dedup > 1
+
+-- criando tabela de stage com select into
+
+drop table if exists tmp.stagedup;
+go
+
+select *,
+ROW_NUMBER() over (partition by orderdate, custid, orderid, shipcountry
+					order by orderid, custid) as rn_dup
+into tmp.stagedup
+from tmp.duplicate;
+go
+
+select * from tmp.stagedup where orderid = 10248;
+
+-- deletando duplicata da stage
 begin tran
-delete from dbo.truncatetb
+delete tmp.stagedup
+output
+	deleted.orderdate,
+	deleted.custid,
+	deleted.rn_dup
+where rn_dup > 1;
+
+commit;
+
+select * from tmp.stagedup;
+
+truncate table tmp.duplicate;
+go
+
+insert into tmp.duplicate
+select orderdate, custid, orderid, shipcountry
+from tmp.stagedup;
+go
+
+select * from tmp.duplicate;
+go
+begin tran
+
+begin tran
+delete from tmp.duplicate
 output
     deleted.orderdate,
     deleted.custid,
@@ -192,15 +314,15 @@ where orderdate > '20200101' and orderdate <= '20201231'
 
 rollback;
 
-select * from dbo.truncatetb
+select * from tmp.truncatetb
 where orderdate  <= '20201231'
 go
 
 -- resetando a propriedade do identity
 
-if object_id('dbo.testeid') is not null drop table dbo.testeid;
+if object_id('tmp.testeid') is not null drop table tmp.testeid;
 GO
-create table dbo.testeid(
+create table tmp.testeid(
 
     id int identity,
     todaydt date default getdate(),
@@ -208,22 +330,22 @@ create table dbo.testeid(
 )
 go
 
-insert into dbo.testeid (texto)
+insert into tmp.testeid (texto)
 values ('aaaa');
 go 10
 
-select * from dbo.testeid;
+select * from tmp.testeid;
 go
 
 -- ao final dess transação, o próximo insert deve começar com 4
 -- o que ela tá fazendo é armazenar o último valor do insert em uma variável e recomeçar a contagem daí
-if exists (select * from dbo.testeid)
+if exists (select * from tmp.testeid)
 begin
     begin tran
-        declare @tempval as int = (Select top(1) id from dbo.testeid with (tablockx));
-        declare @reseed as int = ident_current(N'dbo.testeid') +1;
-        truncate table dbo.testeid
-        dbcc checkident(N'dbo.testeid', reseed, @reseed);
+        declare @tempval as int = (Select top(1) id from tmp.testeid with (tablockx));
+        declare @reseed as int = ident_current(N'tmp.testeid') +1;
+        truncate table tmp.testeid
+        dbcc checkident(N'tmp.testeid', reseed, @reseed);
         print('identity reseed to ' + cast(@reseed as varchar(10)))
 
     commit
@@ -231,49 +353,49 @@ end
 else
     print('table empty. No need to reseed')
 
-insert into dbo.testeid(texto)
+insert into tmp.testeid(texto)
 values ('bbb');
 go 10
 
 
-select * from dbo.testeid;
+select * from tmp.testeid;
 go
 
 
 -- outra opção seria utilizar a funcao max retornando o maior valor da coluna id
-if exists(select * from dbo.testeid)
+if exists(select * from tmp.testeid)
 begin
     begin tran
-        declare @newid as int = (select top(1) id from dbo.testeid with (tablockx));
-        declare @reseed as int = (select max(id) from dbo.testeid) + 1;
-        truncate table dbo.testeid
-        dbcc checkident(N'dbo.testeid', reseed, @reseed);
+        declare @newid as int = (select top(1) id from tmp.testeid with (tablockx));
+        declare @reseed as int = (select max(id) from tmp.testeid) + 1;
+        truncate table tmp.testeid
+        dbcc checkident(N'tmp.testeid', reseed, @reseed);
         print('identity reseed to ' + cast(@reseed as varchar(10)))
     commit
 end
 else 
     print('Table empty');
 GO
-insert into dbo.testeid(texto)
+insert into tmp.testeid(texto)
 values('ccc');
 go 5
 
-select * from dbo.testeid;
+select * from tmp.testeid;
 GO
          
 -- deletando linhas duplicadas.
-drop table if exists dbo.duptable;
+drop table if exists tmp.duptable;
 go
 
 select orderdate, orderid, empid, custid, freight
-into dbo.duptable
+into tmp.duptable
 from Sales.Orders
     cross join
-        dbo.Nums
+        tmp.Nums
 where n <= 10000;
 go
 
-select count(*) from dbo.duptable
+select count(*) from tmp.duptable
 where orderid = 10248
 go
 
@@ -284,7 +406,7 @@ begin tran
 with delcte as (
 
     select orderdate, orderid
-    from dbo.duptable
+    from tmp.duptable
     where orderdate <= '20201231'
 )
 
@@ -296,7 +418,7 @@ output
 
 -- delete com output
 begin TRAN
-delete from dbo.duptable
+delete from tmp.duptable
 output
     deleted.custid,
     deleted.empid
@@ -311,7 +433,7 @@ with deldup as (
     ROW_NUMBER() over(partition by orderid
                         order by orderid
                         ) as rnw
-    from dbo.duptable
+    from tmp.duptable
 )
 
 delete from deldup
@@ -330,7 +452,7 @@ with dropdup as (
     select *,
         row_number() over(partition by orderid
                             order by (select null)) as rnw -- ordem arbitrária, não importa a ordem do delete)
-    from dbo.duptable
+    from tmp.duptable
 )
 delete from dropdup
 output
@@ -339,9 +461,83 @@ where rnw > 1;
 go
 
 begin tran
-truncate table dbo.duptable
+truncate table tmp.duptable
 
 rollback;
+
+-- criar carga de dados duplicados
+-- cada zero adicionado multiplicar por 830 --> 830 x 1000
+
+drop table if exists tmp.batchdelete;
+go
+select 
+	empid,
+	custid,
+	orderdate,
+	shipcountry
+into tmp.batchdelete
+from sales.orders
+	cross join
+	dbo.nums
+where n <= 10000;
+go
+
+with into_nodup as (
+
+	select 
+		empid, custid,
+		orderdate, shipcountry,
+		row_number() over (partition by empid, custid, orderdate
+							order by custid, empid) as dup_rnw
+	from tmp.batchdelete
+)
+
+select empid, custid, orderdate, shipcountry
+into nodup_stg
+from into_nodup
+where dup_rnw = 1;
+go
+
+select * from nodup_stg;
+
+-- truncate batchdelete
+
+truncate table tmp.batchdelete;
+
+-- carga batchdelete
+
+insert into tmp.batchdelete
+select * from nodup_stg;
+
+select * from tmp.batchdelete;
+
+-- deletando com looping em lotes de linhas
+begin tran
+while 1=1
+	begin
+			with batchdel as(
+
+			select *, 
+				row_number() over (partition by empid, custid, 
+												orderdate, shipcountry
+									order by custid) as batch_rwn
+			from tmp.batchdelete
+			)
+		delete top(10000)
+		from batchdel
+		output
+			deleted.empid,
+			deleted.custid,
+			deleted.batch_rwn
+		where batch_rwn > 1
+
+		if @@rowcount < 10000 break;
+	end
+
+rollback;
+
+select * from tmp.batchdelete;
+go
 
 -- delete com looping de contagem de linhas
 while 1 = 1 -- cria um loop infinito
@@ -351,7 +547,7 @@ with countdelete as (
     select *,
         row_number() over (partition by orderid
                             order by (select null)) as rnw -- ordem arbitrária
-    from dbo.duptable
+    from tmp.duptable
 )
 
 delete top(5000) from countdelete
@@ -360,7 +556,7 @@ where rnw <> 1;
 if @@ROWCOUNT < 5000 break;
 end
 
-select * from dbo.duptable;
+select * from tmp.duptable;
 go
 
 
@@ -370,13 +566,13 @@ go
 
 select 
     empid, custid, orderdate, orderid
-into dbo.newduplicate
+into tmp.newduplicate
 from Sales.Orders
 cross join
-    dbo.Nums
+    tmp.Nums
 where n <= 20000
 
-select count(*) from dbo.newduplicate
+select count(*) from tmp.newduplicate
 
 select *
 into tempdup
@@ -392,7 +588,7 @@ select *,
     row_number() over (partition by orderid
                         order by (select null)) as rnw
 into #tbtempdup
-from dbo.newduplicate
+from tmp.newduplicate
 
 begin tran
 delete from #tbtempdup
@@ -407,21 +603,32 @@ with stagedup as (
 
     select *,
         row_number() over (partition by orderid) as rwn
-    from dbo.newduplicate
+    from tmp.newduplicate
 )
 select * 
-into dbo.salesnodup
+into tmp.salesnodup
 from stagedup
 where rwn = 1;
 GO
 
+--- HINTS COM DELETE
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+begin tran
+	delete tmp.batchdelete
+	output
+		deleted.*
+	where empid in (1, 2, 4)
+
+rollback;
 
 ----------- UPDATE -----------
 
 use tempdb;
 go
 
-if object_id('dbo.tempcust') is not null drop table dbo.tempcust;
+if object_id('tmp.tempcust') is not null drop table tmp.tempcust;
 go
 
 select 
@@ -430,14 +637,14 @@ select
     companyname, 
     country, 
     region
-into dbo.tempcust
+into tmp.tempcust
 from TSQLV6.Sales.Customers;
 GO
 
-select * from dbo.tempcust;
+select * from tmp.tempcust;
 go
 
-if object_id('dbo.stagecust') is not null drop table dbo.stagecust;
+if object_id('tmp.stagecust') is not null drop table tmp.stagecust;
 go
 
 select 
@@ -446,13 +653,13 @@ select
     companyname,
     country,
     region
-into dbo.stagecust
+into tmp.stagecust
 from TSQLV6.sales.Customers;
 
-select * from dbo.stagecust;
+select * from tmp.stagecust;
 go
 
-update dbo.stagecust
+update tmp.stagecust
 set region = 'not available'
 output
     deleted.region,
@@ -468,9 +675,9 @@ with upd_cte as (
         tgt.custkey as tgt_custkey,
         tgt.custid as tgt_custid,
         tgt.region as tgt_region
-    from dbo.tempcust as tgt
+    from tmp.tempcust as tgt
         inner join
-        dbo.stagecust as src
+        tmp.stagecust as src
     on tgt.custkey = src.custkey
 )
 
@@ -481,18 +688,18 @@ OUTPUT
     inserted.tgt_region
 where tgt_region is null
 
-select * from dbo.tempcust
+select * from tmp.tempcust
 where region is null;
 
 select count(*) 
-from dbo.tempcust
+from tmp.tempcust
 where region is null;
 
 -- atualizando com views
-if object_id ('dbo.vw_stagecust') is not null drop view dbo.vw_stagecust;
+if object_id ('tmp.vw_stagecust') is not null drop view tmp.vw_stagecust;
 go
 
-create or alter view dbo.vw_stagecust as
+create or alter view tmp.vw_stagecust as
 
 select 
     stg.custkey as stg_custkey,
@@ -504,16 +711,16 @@ select
     tgt.custkey as tgt_custkey,
     tgt.companyname as tgt_compname,
     tgt.region as tgt_region
-from dbo.stagecust as stg
+from tmp.stagecust as stg
     inner join
-    dbo.tempcust as tgt
+    tmp.tempcust as tgt
 on stg.custkey = tgt.custkey;
 go
 
-select * from dbo.vw_stagecust;
+select * from tmp.vw_stagecust;
 
 begin TRAN
-update dbo.vw_stagecust
+update tmp.vw_stagecust
 set tgt_region = stg_region
 output
     deleted.tgt_region,
@@ -522,29 +729,29 @@ where tgt_region is null
 commit;
 go
 
-select * from dbo.tempcust;
+select * from tmp.tempcust;
 go
-select * from dbo.stagecust
+select * from tmp.stagecust
 
-drop view dbo.vw_stagecust;
+drop view tmp.vw_stagecust;
 go
 
-drop table if exists dbo.temproduct;
+drop table if exists tmp.temproduct;
 go
 
 select
     productid,
     productname,
     unitprice
-into dbo.temproduct
+into tmp.temproduct
 from production.products
 go
 
-select * from dbo.temproduct;
+select * from tmp.temproduct;
 
 with update_prod as (
 
-    select * from dbo.temproduct
+    select * from tmp.temproduct
 )
 
 update update_prod
@@ -554,25 +761,25 @@ deleted.unitprice,
 inserted.unitprice
 where unitprice < 18.00
 
-select * from dbo.temproduct
+select * from tmp.temproduct
 where unitprice < 18;
 go
 
 begin tran
-update dbo.temproduct
+update tmp.temproduct
 set unitprice = pp.unitprice
 output
 deleted.unitprice,
 inserted.productid,
 inserted.unitprice
-from dbo.temproduct as tp
+from tmp.temproduct as tp
 inner join
 production.products as pp
 on tp.productid = pp.productid
 where tp.unitprice <> pp.unitprice;
 commit;
 
-select * from dbo.temproduct;
+select * from tmp.temproduct;
 
 -- UPDATE COM VARIÁVEIS
 
@@ -581,67 +788,67 @@ select * from dbo.temproduct;
 use tempdb;
 go
 
-if object_id(N'dbo.mysequence') is not null drop table dbo.mysequence;
+if object_id(N'tmp.mysequence') is not null drop table tmp.mysequence;
 go
 
-create table dbo.mysequence(
+create table tmp.mysequence(
 
     id int not null
 );
 GO
-insert into dbo.mysequence(id)
+insert into tmp.mysequence(id)
 values (0);
 go
 
-select * from dbo.mysequence;
+select * from tmp.mysequence;
 go
 
 -- agora com a tabela de apoio criada no tempdb, basta armazenar esse valor em uma variável
 declare @newid as int;
-update dbo.mysequence
+update tmp.mysequence
 set @newid = id += 1;
 GO
 
-select * from dbo.mysequence;
+select * from tmp.mysequence;
 go
 
 -- teste para dw
-if object_id(N'dbo.testetable') is not null drop table dbo.testetable;
+if object_id(N'tmp.testetable') is not null drop table tmp.testetable;
 go
 
-create  table dbo.testetable(
+create  table tmp.testetable(
 
     nome varchar(10),
     id int
 );
 
-insert dbo.testetable (nome, id)
+insert tmp.testetable (nome, id)
 values ('aaa', Cast(rand(checksum(newid()))*10 as int))
 go 10
 
 declare @idteste as int;
 set @idteste = 0;
 
-update dbo.testetable
+update tmp.testetable
 set id = @idteste + 1;
 
-select * from dbo.testetable;
+select * from tmp.testetable;
 
 declare @valid as int = 0;
 select @valid;
 
 while @valid <= 11
 begin
-    update dbo.testetable
+    update tmp.testetable
     set id = @valid + 1
 end
 
-declare @tempid as int = (select min(id) from dbo.testetable);
-declare @maxtempid as int = (select distinct(count(*)) from dbo.testetable)
+declare @tempid as int = (select min(id) from tmp.testetable);
+declare @maxtempid as int = (select distinct(count(*)) from tmp.testetable)
 while @tempid <= @maxtempid
 begin
     begin tran
-        update dbo.testetable
+        update tmp.testetable
         set id = @tempid + 1
 set @tempid += 1
 end
@@ -649,12 +856,12 @@ end
 rollback
 go
 
-select * from dbo.testetable;
-select distinct(count(*)) from dbo.testetable;
+select * from tmp.testetable;
+select distinct(count(*)) from tmp.testetable;
 
 begin tran
-update dbo.testetable
-set id = (select min(id) + 1 from dbo.testetable)
+update tmp.testetable
+set id = (select min(id) + 1 from tmp.testetable)
 output
 deleted.id,
 inserted.id
@@ -668,7 +875,7 @@ with ct as (
         id,
         nome,
         ROW_NUMBER() over( order by (select null)) as rwn
-    from dbo.testetable
+    from tmp.testetable
     )
 
 update ct
@@ -677,21 +884,21 @@ output
     deleted.id,
     inserted.id
 
-select * from dbo.testetable;
+select * from tmp.testetable;
 
 
 -- outra forma seria criando uma tabela temporária e realizar um join
-if object_id('dbo.gapidentity') is not null drop table dbo.gapidentity;
+if object_id('tmp.gapidentity') is not null drop table tmp.gapidentity;
 GO
 
-create table dbo.gapidentity (
+create table tmp.gapidentity (
 
     id int not null,
     letter varchar(5) not null
 );
 go
 
-insert into dbo.gapidentity
+insert into tmp.gapidentity
 values (1, 'aa'),
         (3, 'bb'),
         (4, 'dd'),
@@ -703,21 +910,21 @@ values (1, 'aa'),
         (8, 'cd');
 go
 
-if object_id('dbo.tempidentity') is not null drop table dbo.tempidentity;
+if object_id('tmp.tempidentity') is not null drop table tmp.tempidentity;
 go
-create table dbo.tempidentity(
+create table tmp.tempidentity(
 
     id int not null,
     letter varchar(5) not null
 );
 go
 
-insert into dbo.tempidentity
+insert into tmp.tempidentity
 select id, letter
-from dbo.gapidentity;
+from tmp.gapidentity;
 go
 
-select * from dbo.tempidentity;
+select * from tmp.tempidentity;
 go
 
 with seqidentity as (
@@ -726,16 +933,16 @@ with seqidentity as (
         id,
         letter,
         ROW_NUMBER() over (order by (select null)) as rn
-    from dbo.tempidentity
+    from tmp.tempidentity
 )
-update dbo.gapidentity 
+update tmp.gapidentity 
 set id = rn
 from seqidentity as sq
 inner join
-dbo.gapidentity as gpi
+tmp.gapidentity as gpi
 on gpi.id = sq.id
 
-select * from dbo.gapidentity;
+select * from tmp.gapidentity;
 go
 
 -- utilizando temp table
@@ -747,40 +954,40 @@ go
 select *,
 row_number() over (order by (select null)) as rn 
 into ##tempid
-from dbo.gapidentity
+from tmp.gapidentity
 order by rn;
 GO
 
 select * from ##tempid;
 
 begin tran
-update dbo.gapidentity
+update tmp.gapidentity
 set id = rn
 output
     deleted.id,
     inserted.id
 from ##tempid as tid
 inner join
-dbo.gapidentity as gpi
+tmp.gapidentity as gpi
 on tid.id = gpi.id
 commit;
 
-select * from dbo.gapidentity;
+select * from tmp.gapidentity;
 go
 
 
 -------------------------- MERGE --------------------------
-if object_id('dbo.stagecust') is not null drop table dbo.stagecust;
+if object_id('tmp.stagecust') is not null drop table tmp.stagecust;
 go
 
 select *
-into dbo.stagecust
+into tmp.stagecust
 from sales.customers;
 GO
 
 -- comando merge
 
-merge into  dbo.stagecust as tgt
+merge into  tmp.stagecust as tgt
 using  sales.customers as src
 on tgt.custid = src.custid
 when matched then 
@@ -796,7 +1003,7 @@ DELETE;
 
 --- com base em um campo
 
-merge into dbo.stagecust as tgt
+merge into tmp.stagecust as tgt
 using sales.customers as src
 on tgt.custid = src.custid
 when matched and src.contacttitle like 'sales%' then
@@ -817,7 +1024,7 @@ output
 where contactname is not null
 commit;
 
-merge into dbo.stagecust as st
+merge into tmp.stagecust as st
 using sales.customers  as sc
 on st.custid = sc.custid
 
@@ -832,12 +1039,12 @@ when not matched by source then
 delete;
 go
 
-select * from dbo.stagecust;
+select * from tmp.stagecust;
 
 select * from sales.customers;
 go
 
-if object_id(N'mergetable') is not null drop table dbo.mergetable;
+if object_id(N'mergetable') is not null drop table tmp.mergetable;
 go
 
 SELECT
@@ -852,14 +1059,14 @@ SELECT
         when contacttitle like '%representative' then 'delete'
         else 'No action'
     end as flag
-into dbo.mergetable
-from dbo.stagecust
+into tmp.mergetable
+from tmp.stagecust
 
 select * from mergetable;
 go
 
-merge into dbo.mergetable as mgt
-using dbo.stagecust as sc
+merge into tmp.mergetable as mgt
+using tmp.stagecust as sc
 on sc.custid = mgt.custid
 
 when matched and flag = 'update'
@@ -871,18 +1078,18 @@ when matched and flag = 'delete'
 then 
     delete;
 
-select * from dbo.mergetable;
+select * from tmp.mergetable;
 
 -- UTILIZANDO EXCEPT
 -- ALTERNATIVA PARA EXCLUIR UMA DETERMINADA CONDIÇÃO
 
 select top(5) * from mergetable;
 
-select top(5) * from dbo.stagecust;
+select top(5) * from tmp.stagecust;
 
 begin tran
-merge into dbo.mergetable as tgt
-using dbo.stagecust as src
+merge into tmp.mergetable as tgt
+using tmp.stagecust as src
 on tgt.custid = src.custid
 when matched and exists (select tgt.city except select src.city where src.city like 'mexico%') 
 then
@@ -902,8 +1109,8 @@ alter table mergetable
 add custkey int identity(1,1)
 
 begin tran
-merge into dbo.mergetable as tgt
-using dbo.stagecust as src
+merge into tmp.mergetable as tgt
+using tmp.stagecust as src
 on tgt.custkey = src.custkey
 
 when matched and     
@@ -918,30 +1125,30 @@ insert (companyname, contacttitle, city, country, flag, isactual)
 values (src.companyname, src.contacttitle, src.city, src.country, 'updated', 'yes');
 rollback;
 
-select * from dbo.mergetable;
+select * from tmp.mergetable;
 
 select * from stagecust;
 
 
 select count(country), country
-from dbo.mergetable
+from tmp.mergetable
 group by country;
 
-update dbo.mergetable
+update tmp.mergetable
 set custid += 1
 where country = 'usa' or country = 'germany'
 
 -- FLAG SERIALIZABLE --
 
-if object_id(N'dbo.addcustomer') is not null drop proc dbo.addcustomer;
+if object_id(N'tmp.addcustomer') is not null drop proc tmp.addcustomer;
 go
 
-create proc dbo.addcustomer 
+create proc tmp.addcustomer 
 
 @custid int, @companyname varchar(25), @phone varchar(20), @address varchar(50)
 as
 
-merge into dbo.customers with (serializable)  as tgt
+merge into tmp.customers with (serializable)  as tgt
 using (values (@custid, @companyname, @phone, @address)) 
 as src (custid, companyname, phone, [address])
 on tgt.custid = src.custid
@@ -964,11 +1171,11 @@ go
 while 1 = 1
 begin
     declare @curcustid as int = checksum(cast(sysdatetime() as datetime2(2)));
-    exec dbo.addcustomer @custid = @curcustid, @companyname = 'a', @phone='b', @address = 'c';
+    exec tmp.addcustomer @custid = @curcustid, @companyname = 'a', @phone='b', @address = 'c';
 end;
 
 
-merge into dbo.customers as tgt
+merge into tmp.customers as tgt
 using sales.customers as src
 on tgt.custid = src.custid
 and src.custid = 2
@@ -987,17 +1194,17 @@ when not matched then
 
 -- exemplo com identity - insert
 
-if object_id(N'dbo.testeoutput') is not null drop table dbo.testeoutput;
+if object_id(N'tmp.testeoutput') is not null drop table tmp.testeoutput;
 go
 
-create table dbo.testeoutput (
+create table tmp.testeoutput (
 
     keycol int identity(1,1) not null primary key clustered,
     datacol NVARCHAR(40) not null
 );
 go
 
-insert dbo.testeoutput (datacol)
+insert tmp.testeoutput (datacol)
 output 
     inserted.$identity, 
     inserted.datacol
