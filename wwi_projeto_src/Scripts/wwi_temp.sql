@@ -13,7 +13,7 @@ left join
 
 	application.cities_archive  as apca
 
-on apc.cityid = apca.cityid
+on apc.cityid = apca.cityid;
 --order by apc.cityname;
 
 with elt_cities_wwi as(
