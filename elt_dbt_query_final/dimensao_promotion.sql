@@ -1,7 +1,7 @@
 with elt_promo as (
 
 select 
-
+	promotionkey,
     specialofferid as promotionid,
     [description] as promotiondescription,
     discountpct as discountpercent,
@@ -21,12 +21,13 @@ select
 
     cast(startdate as date) as startdate,
     cast(enddate as date) as enddate,
+
     case 
-        when enddate is not null and enddate >= (select max(cast(orderdate as date)) from sales.salesorderheader ) or [type] not like 'discontinued%' then 'Yes'
+        when enddate is not null and enddate >= (select max(cast(orderdate as date)) from stg_fact.stgfactsales) or [type] not like 'discontinued%' then 'Yes'
         else 'No'
     end as ispromoactive
 
-from sales.SpecialOffer)
+from stg_dim.stgpromotion)
 
 
 select * from elt_promo;

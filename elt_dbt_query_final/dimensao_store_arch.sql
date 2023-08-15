@@ -2,6 +2,7 @@
 with store_elt as (
 
 	select
+		storekey,
 		storeid,
 		personid as managerid,
 		businessentityid,
@@ -57,4 +58,4 @@ with store_elt as (
 from stg_dim.stgstore)
 
 select * from store_elt
-where managerid is not null and businessentityid is not null
+where managerid is null and businessentityid is null;

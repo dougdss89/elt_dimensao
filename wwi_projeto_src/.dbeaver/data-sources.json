@@ -30,6 +30,21 @@
 				"configurationType": "MANUAL",
 				"home": "postgresql_client",
 				"type": "dev",
+				"auth-model": "native"
+			}
+		},
+		"postgres-jdbc-189e53a54d2-36618723f901d78b": {
+			"provider": "postgresql",
+			"driver": "postgres-jdbc",
+			"name": "localhost",
+			"save-password": true,
+			"configuration": {
+				"host": "localhost",
+				"port": "5432",
+				"url": "jdbc:postgresql://localhost:5432/",
+				"configurationType": "MANUAL",
+				"home": "postgresql_client",
+				"type": "dev",
 				"provider-properties": {},
 				"auth-model": "native"
 			}
@@ -44,7 +59,7 @@
 			"confirm-execute": false,
 			"confirm-data-change": false,
 			"smart-commit": false,
-			"smart-commit-recover": true,
+			"smart-commit-recover": false,
 			"auto-close-transactions": true,
 			"close-transactions-period": 1800
 		}

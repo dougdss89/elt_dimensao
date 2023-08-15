@@ -191,7 +191,7 @@ select
 	case 
 		when DaysToManufacture <= '1' then 'Fast'
 		when DaysToManufacture > '1' and DaysToManufacture <= '3' then 'Normal'
-		when DaysToManufacture > '3' then 'Slowly'
+		else 'Slowly'
 	end as manufactureclass,
 
 	cast(SellStartDate as date) as sellstartdate,

@@ -1,3 +1,4 @@
+use AdventureWorks2019;
 select
     pp.businessentityid,
     hre.loginid,
@@ -24,7 +25,9 @@ select
     sst.[name] as regionname,
     sst.[group] as continentname,
     sst.countryregioncode,
-    sst.territoryid
+    sst.territoryid,
+	SalariedFlag,
+	CurrentFlag
 from person.person as pp
 left join
     humanresources.employee as hre

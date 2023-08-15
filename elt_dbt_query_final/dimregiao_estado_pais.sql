@@ -1,11 +1,11 @@
 
 select
+	provincekey as statekey,
+	TerritoryID as countryid,
+	CountryRegionCode as countrycode,
+	StateProvinceID as stateid,
+	StateProvinceCode as statecode,
+	[name] as statename
 
-	psp.TerritoryID as countryid,
-	psp.CountryRegionCode as countrycode,
-	psp.StateProvinceID as stateid,
-	psp.StateProvinceCode as statecode,
-	psp.[name] as statename
-
-from Person.StateProvince as psp;
+from stg_dim.stgstateprovince
 

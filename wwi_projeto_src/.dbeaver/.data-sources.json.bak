@@ -17,15 +17,16 @@
 				"auth-model": "native"
 			}
 		},
-		"postgres-jdbc-1899d1206d0-e4aeecf0b542efa": {
+		"postgres-jdbc-1899d13b3a4-e49765def52b667": {
 			"provider": "postgresql",
 			"driver": "postgres-jdbc",
-			"name": "localhost",
+			"name": "airflow_teste",
 			"save-password": true,
 			"configuration": {
 				"host": "localhost",
 				"port": "5435",
-				"url": "jdbc:postgresql://localhost:5435/",
+				"database": "airflow_teste",
+				"url": "jdbc:postgresql://localhost:5435/airflow_teste",
 				"configurationType": "MANUAL",
 				"home": "postgresql_client",
 				"type": "dev",

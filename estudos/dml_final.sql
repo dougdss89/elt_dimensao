@@ -1,6 +1,7 @@
 USE TSQLV6;
 GO
-
+create schema tmp;
+go
 set nocount on;
 
 
@@ -391,7 +392,7 @@ select orderdate, orderid, empid, custid, freight
 into tmp.duptable
 from Sales.Orders
     cross join
-        tmp.Nums
+        dbo.Nums
 where n <= 10000;
 go
 
@@ -569,14 +570,14 @@ select
 into tmp.newduplicate
 from Sales.Orders
 cross join
-    tmp.Nums
+    dbo.Nums
 where n <= 20000
 
 select count(*) from tmp.newduplicate
 
 select *
 into tempdup
-from newduplicate
+from tmp.newduplicate
 where ROW_NUMBER() over (partition by orderid
                             order by (select null)) <> 1;
 GO
@@ -614,6 +615,8 @@ GO
 ---------- UPDATE E MERGE ----------
 
 -- cria tabela um de stage para comparação
+drop table if exists tmp.stgcust;
+go
 
 select 
 	identity(int, 1, 1) as stgkey,
@@ -624,6 +627,9 @@ from sales.customers
 	cross apply
 	dbo.nums 
 where n < 100;
+go
+
+drop table if exists tmp.srccust;
 go
 
 select 
@@ -781,7 +787,7 @@ into tmp.mergestg
 from Sales.customers
 	cross apply
 	dbo.Nums 
-where n < 1000;
+where n < 10000;
 
 drop table if exists tmp.mergenew;
 go
@@ -794,7 +800,7 @@ into tmp.mergenew
 from Sales.customers
 	cross apply
 		dbo.nums
-where n < 100;
+where n < 100000;
 go
 
 update tmp.mergenew
@@ -817,6 +823,13 @@ begin tran
 		deleted.*;
 
 rollback;
+
+-- adicionando a coluna de id para ajustar o erro no comando merge.
+alter table tmp.mergenew
+add mrgid int identity
+
+alter table tmp.mergestg
+add mrgid int identity
 
 -- atualizando tabela
 begin tran
@@ -864,8 +877,165 @@ begin tran
 
 rollback;
 
-alter table tmp.mergenew
-add mrgid int identity
+-- adicionando colunas de flag
+-- merge com base em flag
 
 alter table tmp.mergestg
-add mrgid int identity
+add flagupd varchar(5) null;
+
+alter table tmp.mergenew
+add flagupd varchar(5) null;
+
+update tmp.mergestg
+set flagupd = 'no';
+
+update tmp.mergenew
+set flagupd = 'no';
+
+--- atualizando uma porcentagem das linhas 
+
+begin tran
+	begin
+		with percentupd as (
+
+			select 
+				top (40) percent flagupd
+			from tmp.mergenew)
+
+		update percentupd
+		set flagupd = 'yes'
+		output
+			deleted.*,
+			inserted.*
+	end;
+
+commit;
+
+-- com a porcentagem atualizada, aplico o merge com base em um campo
+
+begin tran
+
+	merge tmp.mergenew as mgn
+	using tmp.mergestg as mgt
+	on mgn.mrgid = mgt.mrgid
+
+	when matched and mgn.flagupd = 'no'
+	then
+
+	update set
+		mgn.flagupd = mgt.flagupd
+	output 
+		deleted.custid as delid,
+		deleted.mrgid as delmgr,
+		deleted.flagupd as delflag,
+		inserted.custid,
+		inserted.mrgid,
+		inserted.flagupd;
+
+rollback;
+go
+
+select * from tmp.mergenew
+where flagupd = 'no';
+
+-- inserindo com merge
+
+begin tran
+	
+	merge tmp.mergenew as mgn
+	using tmp.mergestg as mtg
+	on mgn.mrgid = mtg.mrgid
+
+	when matched and mgn.flagupd = 'no'
+	then
+
+	update set 
+		mgn.flagupd = mtg.flagupd
+
+	when not matched then
+	insert (custid, city, companyname, flagupd)
+	values (mtg.custid, mtg.city, mtg.companyname, mtg.flagupd)
+	
+	output
+		deleted.custid as delcust,  deleted.city as delcity, 
+		deleted.companyname as delcorp, deleted.mrgid as delid, 
+		deleted.flagupd as delflag,
+
+		inserted.custid, inserted.city, inserted.companyname,
+		inserted.mrgid, inserted.flagupd;
+
+rollback;
+
+select * from tmp.mergenew
+order by NEWID();
+
+select top(100) * from tmp.mergestg 
+order by NEWID();
+
+-- adicionando colunas de tempo
+alter table tmp.mergestg
+add validfrom datetime not null
+constraint dft_getdate default sysdatetime(),
+
+validto datetime not null
+constraint valid_date default '9999-12-31 00:00:00',
+
+lineversion tinyint not null
+constraint dft_version default 1;
+go
+
+-- criando scd-2 com merge
+
+-- update mergestage
+
+begin tran
+	begin
+		with updmergestg as (
+
+			select top(40) percent flagupd
+			from tmp.mergestg
+			order by NEWID())
+
+			update updmergestg
+			set flagupd = 'yes'
+
+	end;
+
+commit
+
+
+begin tran
+
+	merge tmp.mergestg as mtg
+	using tmp.mergenew as mgn
+	on mtg.mrgid = mgn.mrgid
+
+	when matched and mtg.flagupd = 'yes' 
+	and lineversion = 1
+
+	then
+
+	update set
+	lineversion = 2,
+	validto = sysdatetime()
+
+	when not matched  then
+	insert (custid, city, companyname, flagupd)
+	values (mgn.custid, mgn.city, mgn.companyname, 'no')
+
+	output
+	deleted.custid as delcust,  deleted.city as delcity, 
+	deleted.companyname as delcorp, deleted.mrgid as delid, 
+	deleted.flagupd as delflag, deleted.lineversion as delversion,
+	deleted.validfrom as delvalidf, deleted.validto as delvalidto,
+
+	inserted.custid, inserted.city, inserted.companyname,
+	inserted.mrgid, inserted.flagupd,
+	inserted.lineversion as delversion,
+	inserted.validfrom as delvalidf, inserted.validto as delvalidto;
+
+rollback;
+
+select COUNT(*) from tmp.mergestg;
+
+select COUNT(*) from tmp.mergenew;
