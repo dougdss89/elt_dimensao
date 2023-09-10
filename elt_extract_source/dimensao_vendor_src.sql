@@ -27,6 +27,7 @@ select
 	pva.addressline2,
 	pva.city,
 	pva.postalcode
+	
 from Purchasing.Vendor as pv
 	left join
 	purchasing.productvendor as ppv

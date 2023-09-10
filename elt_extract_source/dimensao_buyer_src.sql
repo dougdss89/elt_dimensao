@@ -1,4 +1,4 @@
-use adventureworks2019;
+
 select distinct
 	hre.businessentityid,
 	pp.firstname,
