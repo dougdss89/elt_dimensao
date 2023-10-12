@@ -106,95 +106,7 @@ select orderid, custid, empid, shipperid, orderdate
 into tmp.myorders
 from Sales.orders;
 
---------------- SEQUENCE X IDENTITY ---------------
 
--- identity
-
-select * from tmp.colidt;
-
---img06
--- colunas identity não podem ser atualizadas.
-update tmp.colidt
-set colid = 0
-OUTPUT
-    deleted.colid,
-    inserted.colid
-where colid > 20 and colid <=30;
-
--- sequence
-
--- objeto criado no SQL Server
-if object_id('seq.seqteste') is not null drop sequence seq.seqteste;
-GO
-
---create schema seq;
-go
-create  sequence seq.seqteste as int
-start with 1
-increment by 1
-minvalue 1
-maxvalue 100
-cycle
-cache 10
-
-alter sequence seq.seqteste 
-restart with 1
-increment by 1
-minvalue 1
-no maxvalue
-cycle
-cache 10000
-select next value for seq.seqteste;
-
--- testando sequence
-
-if object_id('tmp.myorders') is not null drop table tmp.myorders;
-go
-
-select 
-    isnull(orderid, 0) as orderid,
-    empid,
-    custid,
-    shipperid,
-    orderdate
-into tmp.myorders
-from Sales.Orders
-where empid = 1;
-go
-
-alter table tmp.myorders add CONSTRAINT pk_myorder primary key (orderid);
-go
-select * from tmp.myorders;
-go
-
-update tmp.myorders
-set orderid = next value for seq.seqteste;
-go
-
-update tmp.myorders
-set empid = next value for seq.seqteste;
-
-select * from tmp.myorders;
-
--- preservando a ordem da tabela fonte
-truncate table tmp.myorders;
-go
-
-insert into tmp.myorders(orderid, empid, custid, orderdate, shipperid)
-select 
-    next value for seq.seqteste over(order by orderid) as orderid,
-    empid,
-    custid,
-    orderdate,
-    shipperid
-from Sales.Orders
-where empid = 2;
-go
-
-select * from tmp.myorders
-
-select * from Sales.Orders
-where empid = 2;
 
 --------------- DATA MANIPULATION: DELETE, TRUNCATE & UPDATE ---------------
 
@@ -318,71 +230,6 @@ rollback;
 select * from tmp.truncatetb
 where orderdate  <= '20201231'
 go
-
--- resetando a propriedade do identity
-
-if object_id('tmp.testeid') is not null drop table tmp.testeid;
-GO
-create table tmp.testeid(
-
-    id int identity,
-    todaydt date default getdate(),
-    texto varchar(5)
-)
-go
-
-insert into tmp.testeid (texto)
-values ('aaaa');
-go 10
-
-select * from tmp.testeid;
-go
-
--- ao final dess transação, o próximo insert deve começar com 4
--- o que ela tá fazendo é armazenar o último valor do insert em uma variável e recomeçar a contagem daí
-if exists (select * from tmp.testeid)
-begin
-    begin tran
-        declare @tempval as int = (Select top(1) id from tmp.testeid with (tablockx));
-        declare @reseed as int = ident_current(N'tmp.testeid') +1;
-        truncate table tmp.testeid
-        dbcc checkident(N'tmp.testeid', reseed, @reseed);
-        print('identity reseed to ' + cast(@reseed as varchar(10)))
-
-    commit
-end
-else
-    print('table empty. No need to reseed')
-
-insert into tmp.testeid(texto)
-values ('bbb');
-go 10
-
-
-select * from tmp.testeid;
-go
-
-
--- outra opção seria utilizar a funcao max retornando o maior valor da coluna id
-if exists(select * from tmp.testeid)
-begin
-    begin tran
-        declare @newid as int = (select top(1) id from tmp.testeid with (tablockx));
-        declare @reseed as int = (select max(id) from tmp.testeid) + 1;
-        truncate table tmp.testeid
-        dbcc checkident(N'tmp.testeid', reseed, @reseed);
-        print('identity reseed to ' + cast(@reseed as varchar(10)))
-    commit
-end
-else 
-    print('Table empty');
-GO
-insert into tmp.testeid(texto)
-values('ccc');
-go 5
-
-select * from tmp.testeid;
-GO
          
 -- deletando linhas duplicadas.
 drop table if exists tmp.duptable;
@@ -780,9 +627,8 @@ drop table if exists tmp.mergestg;
 go
 
 select 
-	custid,
-	city,
-	companyname
+	coalesce(custid, 0) as custid,
+	city
 into tmp.mergestg
 from Sales.customers
 	cross apply
@@ -793,9 +639,8 @@ drop table if exists tmp.mergenew;
 go
 
 select 
-	custid,
-	city,
-	companyname
+	coalesce(custid,0) as custid,
+	city
 into tmp.mergenew
 from Sales.customers
 	cross apply
@@ -882,9 +727,11 @@ rollback;
 
 alter table tmp.mergestg
 add flagupd varchar(5) null;
+go
 
 alter table tmp.mergenew
 add flagupd varchar(5) null;
+go
 
 update tmp.mergestg
 set flagupd = 'no';
@@ -915,7 +762,7 @@ commit;
 
 begin tran
 
-	merge tmp.mergenew as mgn
+	merge into tmp.mergenew as mgn
 	using tmp.mergestg as mgt
 	on mgn.mrgid = mgt.mrgid
 
@@ -994,7 +841,8 @@ begin tran
 
 			select top(40) percent flagupd
 			from tmp.mergestg
-			order by NEWID())
+			order by NEWID()
+			) -- fim cte
 
 			update updmergestg
 			set flagupd = 'yes'
@@ -1004,38 +852,373 @@ begin tran
 commit
 
 
+/*
+	primeiro forma a tabela para atualizar, para facilitar
+	a lógica e ter apenas as colunas necessárias.
+
+	procure limitar ao máximo o que deve ser atualizado para evitar problemas
+*/
+
+drop table if exists #tmpscd_table;
+go
+
+create table #tmpscd_table (
+
+	custid int,
+	city varchar(50),
+	validfrom datetime,
+	validto datetime,
+	updated char(10),
+	lineversion tinyint)
+go
+
 begin tran
+declare 
+	@uptime datetime,
+	@updated char(10);
 
-	merge tmp.mergestg as mtg
-	using tmp.mergenew as mgn
-	on mtg.mrgid = mgn.mrgid
+set @uptime = SYSDATETIME()
+set @updated = 'updated';
 
-	when matched and mtg.flagupd = 'yes' 
-	and lineversion = 1
+	begin
+		
+		with join_update as (
 
-	then
+			select 
 
-	update set
-	lineversion = 2,
-	validto = sysdatetime()
+				mtg.custid,
+				mtg.city,
+				mtg.mrgid,
+				mtg.flagupd,
+				mtg.lineversion,
+				mtg.validfrom,
+				mtg.validto,
+				mgn.city as citynew,
+				mgn.custid as custidnew,
+				mgn.mrgid as mrgidnew,
+				mgn.validto as newvalidto,
+				mgn.validfrom as newvalidfrom
 
-	when not matched  then
-	insert (custid, city, companyname, flagupd)
-	values (mgn.custid, mgn.city, mgn.companyname, 'no')
+			from tmp.mergestg as mtg
+				inner join
+				tmp.mergenew as mgn
+			on mtg.mrgid = mgn.mrgid
+			and mtg.custid = mgn.custid
+			where mtg.flagupd = 'yes')
 
-	output
-	deleted.custid as delcust,  deleted.city as delcity, 
-	deleted.companyname as delcorp, deleted.mrgid as delid, 
-	deleted.flagupd as delflag, deleted.lineversion as delversion,
-	deleted.validfrom as delvalidf, deleted.validto as delvalidto,
+			update join_update
+			set
+				custid = custidnew,
+				city = citynew,
+				validfrom = newvalidfrom,
+				validto = '9999-12-31',
+				flagupd = 'no',
+				lineversion += 1
+			output
+				deleted.custid, deleted.city,
+				deleted.validfrom, deleted.validto,
+				deleted.flagupd, deleted.lineversion
+			into #tmpscd_table
 
-	inserted.custid, inserted.city, inserted.companyname,
-	inserted.mrgid, inserted.flagupd,
-	inserted.lineversion as delversion,
-	inserted.validfrom as delvalidf, inserted.validto as delvalidto;
-
+			insert into tmp.mergestg (custid, city, validfrom, validto, flagupd, lineversion)
+			select custid, city, validfrom, @uptime, @updated, lineversion
+			from #tmpscd_table
+	end
 rollback;
 
-select COUNT(*) from tmp.mergestg;
+select * from #tmpscd_table;
+go
 
-select COUNT(*) from tmp.mergenew;
+select * from tmp.mergestg
+where custid >= 5 and custid <= 10
+and custid not in (9)
+order by custid, lineversion;
+go
+
+alter table tmp.mergestg
+alter column flagupd varchar(10) null;
+
+
+-- SCD 2 COM MERGE
+-- poderia colocar dentro do begin tran, a tabela temporária
+
+begin tran
+	begin	
+		declare 
+			@uptime datetime,
+			@updated char(10);
+
+		set @uptime = SYSDATETIME()
+		set @updated = 'updated';
+
+		merge tmp.mergestg as stg
+		using tmp.mergenew as mgn
+		on stg.mrgid = mgn.mrgid
+		and stg.custid = mgn.custid
+
+		when matched and stg.flagupd = 'yes' 
+		then
+
+		-- atualiza para nova versão
+		update set
+		stg.custid = mgn.custid,
+		stg.city = mgn.city,
+		stg.flagupd = mgn.flagupd,
+		stg.validfrom = mgn.validfrom,
+		stg.validto = '9999-12-31',
+		stg.lineversion += 1
+
+		-- captura os valores deletados e insere na tabela temporária
+		output
+			deleted.custid,
+			deleted.city,
+			deleted.validfrom,
+			deleted.validto,
+			deleted.flagupd,
+			deleted.lineversion
+		into #tmpscd_table;
+
+		-- insere a partir da tabela temporária, os valores na tabela original
+		insert into tmp.mergestg (custid, city, validfrom, validto, flagupd, lineversion)
+		select custid, city, validfrom, @uptime, @updated, lineversion
+		from #tmpscd_table
+end
+rollback;
+
+
+select * from tmp.mergestg
+where custid = 8
+order by lineversion;
+
+select * from #tmpscd_table;
+
+--SCD III - quando controlar apenas uma coluna
+-- utilizando merge
+
+alter table tmp.mergestg
+add updatedcity varchar(15)
+go
+
+alter table tmp.mergestg
+drop column validto;
+go
+
+exec sp_rename 'tmp.mergestg.validfrom', 'updated_date', 'column';
+
+select * from tmp.mergestg;
+go
+
+
+drop table if exists #tmpscd_table;
+		
+create table #tmpscd_table (
+
+	custid int,
+	city nvarchar(50)
+);
+
+begin tran 
+	begin
+		declare @updaytime as datetime;
+		set @updaytime = SYSDATETIME();
+
+-- utilizando merge para controle
+	
+		merge into tmp.mergestg as stg
+		using tmp.mergenew as mgn
+		on stg.custid = mgn.custid
+
+		when matched and stg.flagupd = 'yes'
+		then
+
+		update set
+
+			stg.custid = mgn.custid,
+			stg.updatedcity = mgn.city,
+			stg.updated_date = @updaytime, -- marco o horário da atualização
+			stg.flagupd = 'updated' -- indicando que a linha foi atualizada.
+
+		output
+			deleted.custid,
+			deleted.city
+		into #tmpscd_table;
+	end
+rollback;
+
+select 
+	custid,
+	city,
+	updatedcity as city_atual,
+	flagupd,
+	updated_date
+from tmp.mergestg
+order by flagupd desc;
+go
+
+
+-- criando SCD IV (controle histórico com tabela auxiliar)
+drop table if exists tmp.stageproduct;
+select 
+	coalesce(productid,0) as productid,
+	productname,
+	categoryid,
+	unitprice
+into tmp.stageproduct
+from Production.Products;
+go
+
+drop table if exists tmp.finalproduct;
+select 
+	coalesce(productid,0) as productid,
+	productname,
+	categoryid,
+	unitprice
+into tmp.finalproduct
+from Production.Products;
+go
+
+-- atualizando linha para o update randomicamente
+alter table tmp.stageproduct
+add updflag varchar(5);
+go
+
+alter table tmp.finalproduct
+add isupdated bit;
+go
+
+update tmp.finalproduct
+set isupdated = 0;
+
+update tmp.stageproduct
+set updflag = 'no';
+
+begin tran
+	begin
+		with upd_prodpercent as (
+
+			select top(20) percent
+
+				unitprice,
+				updflag
+			from tmp.stageproduct
+			order by NEWID())
+
+		update upd_prodpercent
+		set 
+			updflag = 'yes',
+			unitprice = (unitprice *+ 1.20)
+		output
+			deleted.unitprice,
+			inserted.unitprice as newprice,
+			deleted.updflag,
+			deleted.updflag as newflag
+		where updflag = 'no'
+	end
+commit;
+
+-- criando a tabela de registro histórico
+create table tmp.product_hist (
+
+	hist_prodid int,
+	hist_prodname varchar(40),
+	hist_categoryid int,
+	hist_price decimal(12,2),
+	row_version smallint,
+	dateupdated datetime)
+go
+
+-- merge para controle
+
+begin tran
+	declare @dateupd as datetime, 
+			@version as smallint;
+
+	set		@dateupd = SYSDATETIME();
+	set		@version = 0;
+
+	begin 
+		drop table if exists #tempprod;
+		
+		create table #tempprod (
+				hist_prodid int,
+				hist_prodname varchar(40),
+				hist_categoryid int,
+				hist_price decimal(12,2))
+	end
+
+	begin
+		merge into tmp.finalproduct as fnp
+		using tmp.stageproduct as stp
+		on fnp.productid = stp.productid
+
+		when matched and
+		fnp.unitprice <> stp.unitprice
+		or stp.updflag = 'yes'
+
+		then
+
+		update set
+
+			fnp.productid = stp.productid,
+			fnp.productname = stp.productname,
+			fnp.categoryid = stp.categoryid,
+			fnp.unitprice = stp.unitprice,
+			fnp.isupdated = 1
+
+		output
+			deleted.productid,
+			deleted.productname,
+			deleted.categoryid,
+			deleted.unitprice
+		into #tempprod;
+
+		begin tran
+			begin
+			-- atualizando o versionamento da linha na tabela histórica.
+
+				insert into  tmp.product_hist (hist_prodid, hist_prodname, hist_categoryid, hist_price, row_version, dateupdated)
+				select hist_prodid, hist_prodname, hist_categoryid, hist_price, @version + 1, @dateupd
+				from #tempprod;
+			end
+
+			begin
+				update  tmp.stageproduct
+				set updflag = 'no'
+				output
+					deleted.updflag
+				where updflag = 'yes';
+			end
+		commit;
+	end
+rollback; -- commit ou rollback para finalizar o merge.
+
+select * from tmp.product_hist;
+
+select * from tmp.finalproduct;
+
+select
+	productid,
+	unitprice,
+	hist_price,
+	isupdated,
+	row_version,
+	dateupdated
+from tmp.finalproduct as fnp
+	inner join
+	tmp.product_hist as hist
+on fnp.productid = hist.hist_prodid
+
+
+
+-- exemplo de erro utilizando ON como filtro.
+merge into tmp.mergenew as mgn
+using tmp.mergestg as stg
+on mgn.custid = stg.custid 
+and mgn.custid = 100
+
+when matched then
+update
+
+when not matched then
+delete;
+
