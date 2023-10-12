@@ -1,3 +1,4 @@
+
 select distinct
 	hre.businessentityid,
 	pp.firstname,
