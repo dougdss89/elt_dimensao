@@ -1,0 +1,9 @@
+-- nulls são valores desconhecidos para o banco, ou seja, unknown.
+-- bancos relacionais utilizam três valores lógicos: TRUE, FALSE E UNKNOWN
+
+Nulls não podem ser igualados em nenhuma operação lógica na cláusula WHERE. Pelo fato do banco não reconhecer o valor, ele não consegue operar.
+
+Quando um campo possui nulls, agregações utilizando essa coluna são problemáticas, exigem atenção. A linguagem SQL não consegue fazer agregações com esse tipo.
+
+Como dito antes, não é um valor reconhecido, assim, o banco não entende se é string ou integer para calcular ou qualquer outra operação.
+

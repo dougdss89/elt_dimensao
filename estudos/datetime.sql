@@ -10,3 +10,4 @@ select
 select cast(sysdatetime() as date) as sysdatetime_date
 select cast(sysdatetime() as time) as sysdatetime_time
 
+
