@@ -1,3 +1,6 @@
+use TSQLV6;
+go
+
 select 
     getdate()               as getdate,
     current_timestamp       as [current_timestamp],
@@ -23,6 +26,9 @@ go
 
 -- o offset retornado pelo switchoffset é com base no utcdatetimeoffset
 select SWITCHOFFSET(sysdatetimeoffset(),'-08:00')
+go
+
+drop table if exists testedatetime;
 go
 
 create table testedatetime (
@@ -63,3 +69,40 @@ select * from testedatetime;
 
 alter table testedatetime
 drop column dto;
+
+-- datepart function
+select DATEPART(DD, GETDATE()) as daypart;
+go
+
+-- desafios de trabalhar com date and time
+
+-- literals
+
+/*
+tem que tomar cuidado com a forma como se utiliza as datas pois o SQL Server pode considerar D/M/A 
+retornando resultando incorreto
+
+seja com - ou / ele reconhece como data
+
+No postgresql, ele é mais sensível com a ordem que colocamos o mês. Se for m/d/a acusará erro, o mesmo vale para a/m/d
+Acredito que isso aconteça pois o engine interno do banco não consegue converter corretamente.
+
+Ao que tudo indica, ambos os bancos tentam converter para um formato de data, mas dependendo da ordem, ele não consegue
+*/
+select custid, empid, orderdate from Sales.Orders
+where orderdate = '2020-08-27';
+
+select custid, orderid, orderdate
+from sales.orders
+where orderdate = '08/27/2020';
+go
+
+select custid, orderid, orderdate
+from sales.orders
+where orderdate = '2020/08/27';
+go
+
+select custid, orderid, orderdate -- essa query acusa falha
+from sales.Orders
+where orderdate = '2020/27/08';
+go
