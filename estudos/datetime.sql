@@ -189,7 +189,7 @@ declare @inputdate as date,
 set @inputdate = SYSDATETIME()
 set @compensatedate = @@DATEFIRST
 
-select DATEPART(weekday, DATEADD(day, @compensatedate - 1, @inputdate)) as english_1;
+select DATEPART(weekday, DATEADD(day, @compensatedate - 1, @inputdate)) as english_1, datename(weekday, DATEADD(day, @compensatedate - 1, @inputdate)) as primeday;
 go
 
 
@@ -214,3 +214,81 @@ select @@DATEFIRST as firstday, datename(WEEKDAY, @@DATEFIRST) beginweek, DATEPA
 
 set language 'British English';
 select @@DATEFIRST as firstday, datename(WEEKDAY, @@DATEFIRST) beginweek, DATEPART(weekday, SYSDATETIME())as today;
+
+/*
+o que acontece é o seguinte:
+dependendo do idioma e cultura, o primeiro dia da semana é Domingo(Brasil, EUA)
+em outros locais,  é Segunda(Inglaterra)
+
+quando é Domingo, terça é o terceiro dia da semana, do contrário, segundo.
+
+Caso isso se torne um problema, talvez seja interessante padronizar para segunda, como 1º dia. Ou Domingo.
+
+Pq em caso de uma empresa global, atuando em uma cultura de data diferente, se for olhar qual dia da semana há mais compra,
+dependendo da perspectiva, verá que é o 1º dia, e esse cai Domingo, quando estão achando que é segunda.
+
+
+-----------
+Estava estudando SQL agora pouco, me aprofundando em manipulação de datas. 
+
+
+
+Não é tão simples quanto parece e acabei pensando em uma situação:
+
+
+
+Existem culturas que consideram o Domingo como 1º dia (Brasil é um deles) e outras que consideram a Segunda.
+
+
+
+Dependendo do SGBD utilizado, pode gerar uma confusão.
+
+
+
+O PostgreSQL começa na Segunda e o SQL Server, depende da linguagem instalada - pode ser alterada com o "set language".
+
+
+
+Considerando que uma empresa global atuando em diferentes culturas fosse olhar um relatório gerado de uma base com o 1º dia Domingo e fosse tomar alguma ação, não estaria sendo induzida ao erro olhando de forma isolada para aquela região?
+*/
+
+set language 'brazilian'
+select 
+	datename(weekday, getdate()) as diahoje,
+	datepart(dw, getdate()) as numdia_hoje,
+	datename(weekday, GETDATE() - 1) as diasemana, 
+	datepart(dw, getdate()-1) as daynumber, 
+	datename(weekday, getdate()-2) as retrasado, 
+	DATEPART(dw, getdate()-2) as retrasado_daynumber,
+	datename(weekday, @@datefirst);
+
+set language 'british'
+select 
+	datename(weekday, getdate()) as diahoje,
+	datepart(dw, getdate()) as numdia_hoje,
+	datename(weekday, GETDATE() - 1) as diasemana, 
+	datepart(dw, getdate()-1) as daynumber, 
+	datename(weekday, getdate()-2) as retrasado, 
+	DATEPART(dw, getdate()-2) as retrasado_daynumber,
+	datename(weekday, @@datefirst);
+
+-- primeiro, ultimo e próximo dia
+
+select DATEADD(day, datediff(day, '19000101', sysdatetime()), '19000101')
+
+select dateadd(day, datediff(month, '19000101', sysdatetime()), '19000101');
+
+select DATEFROMPARTS(year(sysdatetime()), month(sysdatetime()), 1); -- como formar o primeiro dia do mês.
+
+-- isso vai me ajudar a montar uma dimdate melhor
+-- formando o primeiro dia do mês com datefromparts
+select 
+		datefromparts(year(sysdatetime()), month(sysdatetime()), 1) as firstday,
+		DATENAME(weekday, datefromparts(year(sysdatetime()), month(sysdatetime()), 1)) as weekdayoffirstday;
+go
+
+-- para o último dia, o SQL Server possui a função eomonth
+select 
+	datename(weekday, eomonth(getdate())) as weekname_lastday;
+go
+
